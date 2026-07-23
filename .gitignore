@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+server/dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local config overrides (keep the example checked in)
+config/vibe-display.config.local.json
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+e2e/.cache/

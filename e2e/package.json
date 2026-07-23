@@ -1,0 +1,14 @@
+{
+  "name": "@vibe-display/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests for Vibe Display: hook -> server -> WS -> rendered PWA DOM.",
+  "scripts": {
+    "test": "playwright test",
+    "install-browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

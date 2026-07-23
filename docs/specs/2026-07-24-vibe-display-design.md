@@ -451,13 +451,13 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 ---
 
-## 12. Open questions for user review
+## 12. Resolved design decisions (from user review)
 
-1. **Server bind + auth:** OK to bind to `0.0.0.0:7331` on the LAN with no auth (single trusted desk network)? Or prefer `127.0.0.1` only + a reverse proxy / tunnel for the phone?
-2. **Codex OAuth provisioning:** you'll paste your Codex `access_token`/`refresh_token`/`account_id` into `config/vibe-display.config.json`. Confirm that's acceptable, and whether you want me to also write a helper that extracts them from your existing `~/.codex/auth.json` automatically.
-3. **Claude quota:** since there's no live Anthropic endpoint, is config-file values acceptable for v1, or do you want the server to **observe** Claude usage by counting tokens logged through a local proxy (much larger scope)?
-4. **Default theme/font:** I'll default to neon-dark + JetBrains Mono. Confirm or name a preferred default theme.
-5. **Reset count semantics:** "Codex 剩余重置次数" = `reset_credits_available` from wham (`/rate-limit-reset-credits`). Confirm this is the number you want shown.
+1. **Server bind + auth → LAN open, no auth.** Bind `0.0.0.0:7331`; phone opens `http://<pc-ip>:7331/` on the same LAN. Trusted home/office network assumed. (Future: optional shared-secret token if ever exposed beyond the desk.)
+2. **Codex OAuth → auto-read `~/.codex/auth.json`.** The server reads Codex OAuth tokens (and the ChatGPT account id) from the existing Codex CLI auth file at startup, and re-reads it as tokens rotate (Codex CLI rotates that file itself; we just watch it). No manual paste. The manual `codex.oauth` config block remains as an *override* for users without Codex CLI installed.
+3. **Claude quota → config/observed only.** No live Anthropic call. Claude 5h/7d come from `config/vibe-display.config.json` `claude.fallback` (and updatable via `POST /api/quota/mock`). Claude **task status** still tracks live via hooks (the reducer is provider-agnostic).
+4. **Default theme/font → neon-dark + JetBrains Mono.**
+5. **Reset count semantics → `reset_credits_available`** from wham `/rate-limit-reset-credits`, i.e. the number of unused rate-limit reset credits. Matches "Codex 剩余重置次数".
 
 ---
 

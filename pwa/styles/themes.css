@@ -1,0 +1,70 @@
+/* Vibe Display — color-pack themes.
+ *
+ * 5 themes ported from cockpit-tools' base.css color packs. Each overrides the
+ * surface + blob variables via [data-theme="..."]. The neon-dark default lives
+ * in base.css :root (no attribute needed).
+ *
+ * We intentionally do NOT override the traffic-light / quota colors — those
+ * carry semantic meaning (green=good, red=bad) and must stay consistent across
+ * themes. Only the ambiance (bg, blobs, accents) changes.
+ */
+
+[data-theme="nord"] {
+  --bg: #2e3440;
+  --bg-elev: #3b4252;
+  --border: #434c5e;
+  --fg: #e5e9f0;
+  --fg-dim: #aeb6c2;
+  --fg-faint: #6b7280;
+  --blob-1: rgba(136, 192, 208, 0.20);  /* nord7 frost */
+  --blob-2: rgba(94, 129, 172, 0.18);   /* nord10 */
+  --blob-3: rgba(163, 190, 140, 0.14);  /* nord14 green */
+}
+
+[data-theme="tokyo-night"] {
+  --bg: #0f1020;
+  --bg-elev: #16172a;
+  --border: #232540;
+  --fg: #c0caf5;
+  --fg-dim: #8a94c4;
+  --fg-faint: #565f89;
+  --blob-1: rgba(122, 162, 247, 0.22);  /* blue */
+  --blob-2: rgba(187, 154, 247, 0.18);  /* purple */
+  --blob-3: rgba(123, 214, 213, 0.14);  /* cyan */
+}
+
+[data-theme="catppuccin"] {
+  --bg: #1e1e2e;
+  --bg-elev: #262637;
+  --border: #313244;
+  --fg: #cdd6f4;
+  --fg-dim: #a6acd3;
+  --fg-faint: #6c7086;
+  --blob-1: rgba(203, 166, 247, 0.18);  /* mauve */
+  --blob-2: rgba(137, 180, 250, 0.18);  /* blue */
+  --blob-3: rgba(166, 227, 161, 0.14);  /* green */
+}
+
+[data-theme="gruvbox"] {
+  --bg: #1d2021;
+  --bg-elev: #282828;
+  --border: #3c3836;
+  --fg: #ebdbb2;
+  --fg-dim: #bdae93;
+  --fg-faint: #7c6f64;
+  --blob-1: rgba(250, 189, 47, 0.16);   /* yellow */
+  --blob-2: rgba(214, 93, 14, 0.16);    /* orange */
+  --blob-3: rgba(152, 151, 26, 0.14);   /* green */
+}
+
+[data-theme="synthwave"] {
+  --bg: #0a0a1a;
+  --bg-elev: #12122a;
+  --border: #2a2a55;
+  --fg: #f0e6ff;
+  --fg-dim: #b09cdc;
+  --fg-faint: #5a4a8a;
+  --blob-1: rgba(255, 0, 153, 0.22);    /* magenta */
+  --blob-2: rgba(0, 200, 255, 0.20);    /* cyan */
+  --blob-3: rgba(186, 85, 211, 0.18);   /* medium orchid */
+}

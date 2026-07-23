@@ -1,0 +1,24 @@
+{
+  "name": "vibe-display",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn a decommissioned Android phone into a Codex / Claude Code vibe-coding status indicator.",
+  "workspaces": [
+    "server",
+    "pwa",
+    "e2e"
+  ],
+  "scripts": {
+    "build": "npm run build -w server",
+    "start": "npm run start -w server",
+    "dev": "npm run dev -w server",
+    "test": "npm run test -w server",
+    "test:e2e": "npm run test -w e2e",
+    "typecheck": "npm run typecheck -w server"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "vibe-display",
+  "license": "MIT"
+}

@@ -1,0 +1,132 @@
+/* Vibe Display — base tokens & neon-dark default theme.
+ *
+ * All visual values are CSS custom properties so themes.css can override them
+ * per [data-theme]. The neon-dark palette is ported from pulse-island's
+ * rgb_for_token + cockpit-tools' floating-card glow.
+ */
+
+:root {
+  /* Base surfaces */
+  --bg: #0d0e12;
+  --bg-elev: #14161c;
+  --border: #1d1f25;
+  --fg: #e6e7eb;
+  --fg-dim: #9aa0ad;
+  --fg-faint: #5b606b;
+
+  /* Traffic-light states */
+  --state-idle: #7f8490;
+  --state-running: #49c980;
+  --state-waiting: #ffb84d;
+  --state-failed: #ff6369;
+  --state-completed: #699eff;
+  --state-observed: #979daf;
+
+  /* Quota 4-tier (high/medium/low/critical) */
+  --quota-high: #3ad28d;
+  --quota-medium: #ffb84d;
+  --quota-low: #f97316;
+  --quota-critical: #ff5f67;
+
+  /* Glow strengths */
+  --glow-soft: 0 0 8px;
+  --glow-strong: 0 0 14px;
+
+  /* Background blob colors (neon-dark) */
+  --blob-1: rgba(73, 201, 128, 0.18);
+  --blob-2: rgba(105, 158, 255, 0.16);
+  --blob-3: rgba(255, 184, 77, 0.12);
+
+  /* Typography */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: var(--font-mono);
+
+  /* Layout */
+  --hero-w: 40%;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --pad: 18px;
+}
+
+/* Font family selection via [data-font] */
+[data-font="jetbrains"] { --font: var(--font-mono); }
+[data-font="inter"] { --font: var(--font-sans); }
+[data-font="system"] { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* Animated background layer (3 drifting blobs). Paused by reduced-motion. */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.9;
+  animation: drift 28s ease-in-out infinite;
+}
+.bg-blob-1 {
+  width: 60vmax; height: 60vmax;
+  left: -10vmax; top: -20vmax;
+  background: radial-gradient(circle at center, var(--blob-1), transparent 70%);
+}
+.bg-blob-2 {
+  width: 55vmax; height: 55vmax;
+  right: -15vmax; bottom: -10vmax;
+  background: radial-gradient(circle at center, var(--blob-2), transparent 70%);
+  animation-delay: -9s; animation-duration: 34s;
+}
+.bg-blob-3 {
+  width: 45vmax; height: 45vmax;
+  left: 30vmax; top: 20vmax;
+  background: radial-gradient(circle at center, var(--blob-3), transparent 70%);
+  animation-delay: -18s; animation-duration: 40s;
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(8vmax, 6vmax) scale(1.08); }
+  66%      { transform: translate(-6vmax, -4vmax) scale(0.96); }
+}
+
+/* Aurora variant: sweeping gradient bands instead of blobs. */
+[data-bg="aurora"] .bg-blob-1 { animation-name: sweep; animation-duration: 22s; }
+[data-bg="aurora"] .bg-blob-2 { animation-name: sweep; animation-duration: 30s; animation-delay: -7s; }
+[data-bg="aurora"] .bg-blob-3 { animation-name: sweep; animation-duration: 38s; animation-delay: -14s; }
+@keyframes sweep {
+  0%, 100% { transform: translateX(-30vmax) skewX(-12deg) scaleY(0.5); opacity: 0.4; }
+  50%      { transform: translateX(30vmax) skewX(12deg) scaleY(0.8); opacity: 0.9; }
+}
+
+[data-bg="none"] .bg-layer { display: none; }
+
+/* Reduced motion: freeze all animations (respect prefers-reduced-motion + manual toggle). */
+[data-reduced-motion="true"] *,
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { animation: none !important; }
+}
+[data-reduced-motion="true"] .dot { animation: none !important; }

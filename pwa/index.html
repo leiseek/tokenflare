@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="neon-dark" data-font="jetbrains" data-bg="mesh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0e12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <title>Vibe Display</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link id="font-link" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/base.css" />
+  <link rel="stylesheet" href="./styles/themes.css" />
+  <link rel="stylesheet" href="./styles/components.css" />
+</head>
+<body>
+  <!-- Animated background layer -->
+  <div class="bg-layer" id="bgLayer" aria-hidden="true">
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
+    <div class="bg-blob bg-blob-3"></div>
+  </div>
+
+  <main class="stage" id="stage">
+    <!-- HERO (left ~40%) -->
+    <section class="hero" aria-label="Task status">
+      <div class="hero-top">
+        <span class="dot" id="statusDot" data-status="idle"></span>
+        <span class="status-word" id="statusWord">IDLE</span>
+      </div>
+      <div class="hero-task" id="taskLabel" title="">waiting for a task…</div>
+      <div class="hero-cwd" id="taskCwd"></div>
+      <div class="hero-elapsed" id="taskElapsed">00:00</div>
+      <div class="hero-bottom">
+        <span class="clock" id="clock">--:--</span>
+        <button class="gear" id="gearBtn" type="button" aria-label="Settings">⚙</button>
+        <span class="conn-badge" id="connBadge" title="connection state"></span>
+      </div>
+    </section>
+
+    <!-- QUOTA GRID (right ~60%) -->
+    <section class="quota-grid" id="quotaGrid" aria-label="Quota cards">
+      <!-- cards rendered by render.js -->
+    </section>
+  </main>
+
+  <!-- Settings overlay -->
+  <div class="settings-overlay" id="settingsOverlay" hidden>
+    <div class="settings-panel">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="settings-close" id="settingsClose" type="button" aria-label="Close">×</button>
+      </div>
+
+      <label class="settings-row">
+        <span>Theme</span>
+        <select id="themeSelect">
+          <option value="neon-dark">Neon Dark</option>
+          <option value="nord">Nord</option>
+          <option value="tokyo-night">Tokyo Night</option>
+          <option value="catppuccin">Catppuccin</option>
+          <option value="gruvbox">Gruvbox</option>
+          <option value="synthwave">Synthwave</option>
+        </select>
+      </label>
+
+      <label class="settings-row">
+        <span>Font</span>
+        <select id="fontSelect">
+          <option value="jetbrains">JetBrains Mono</option>
+          <option value="inter">Inter</option>
+          <option value="system">System</option>
+        </select>
+      </label>
+
+      <label class="settings-row">
+        <span>Background</span>
+        <select id="bgSelect">
+          <option value="mesh">Gradient Mesh</option>
+          <option value="aurora">Aurora</option>
+          <option value="none">None</option>
+        </select>
+      </label>
+
+      <label class="settings-row toggle">
+        <span>Reduced motion</span>
+        <input type="checkbox" id="reducedMotionToggle" />
+      </label>
+
+      <label class="settings-row">
+        <span>Server</span>
+        <input type="text" id="serverInput" placeholder="ws://host:7331/ws" />
+      </label>
+
+      <div class="settings-actions">
+        <button type="button" id="reconnectBtn">Reconnect</button>
+      </div>
+
+      <p class="settings-hint">
+        Preferences are stored locally on this phone only.
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
