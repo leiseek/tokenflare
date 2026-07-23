@@ -23,7 +23,7 @@ let serverProc: ChildProcess | null = null;
 let baseUrl = "";
 
 /** Boot the server with poll disabled, returning once /healthz responds. */
-async function bootServer(): Promise<string> {
+async function bootServer(mode: "source" | "compiled" = "source"): Promise<string> {
   // Pick a free port by binding a temporary server then closing it.
   const port = await new Promise<number>((res) => {
     const srv = http.createServer();
@@ -57,22 +57,23 @@ async function bootServer(): Promise<string> {
     }),
   );
 
-  serverProc = spawn(
-    process.platform === "win32" ? "npx.cmd" : "npx",
-    ["tsx", "server/src/index.ts"],
-    {
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        VIBE_HOST: "127.0.0.1",
-        VIBE_PORT: String(port),
-        VIBE_CONFIG: configPath,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-      // Required on Windows to launch npx.cmd.
-      shell: process.platform === "win32",
+  // "source" runs via tsx; "compiled" runs the built dist/ artifact.
+  const cmd = mode === "compiled"
+    ? { bin: process.platform === "win32" ? "node.exe" : "node", args: ["server/dist/src/index.js"] }
+    : { bin: process.platform === "win32" ? "npx.cmd" : "npx", args: ["tsx", "server/src/index.ts"] };
+
+  serverProc = spawn(cmd.bin, cmd.args, {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      VIBE_HOST: "127.0.0.1",
+      VIBE_PORT: String(port),
+      VIBE_CONFIG: configPath,
     },
-  );
+    stdio: ["ignore", "pipe", "pipe"],
+    // Required on Windows to launch npx.cmd (.exe files like node don't need it).
+    shell: process.platform === "win32" && cmd.bin === "npx.cmd",
+  });
 
   // Wait for /healthz to respond (up to 15s).
   const url = `http://127.0.0.1:${port}`;
@@ -224,5 +225,41 @@ test.describe.serial("Vibe Display end-to-end", () => {
     assert.match(body.error ?? "", /secret/i);
     // And the reason must NOT contain the leaked value.
     assert.ok(!JSON.stringify(body).includes("sk-leak"));
+  });
+});
+
+/**
+ * Separate suite: the COMPILED build (server/dist) must serve the PWA too.
+ * This guards the exact bug where relative PWA-path resolution worked under
+ * tsx (src/) but broke under the compiled artifact (dist/src/).
+ */
+test.describe.serial("Vibe Display compiled build serves the PWA", () => {
+  let compiledUrl = "";
+
+  test.beforeAll(async () => {
+    compiledUrl = await bootServer("compiled");
+  });
+  test.afterAll(async () => {
+    await killServer();
+  });
+
+  test("compiled server serves index.html, CSS, JS, and API", async ({ request }) => {
+    // index.html (NOT a "file not found" JSON)
+    const html = await request.get(`${compiledUrl}/`);
+    expect(html.ok()).toBeTruthy();
+    const htmlText = await html.text();
+    assert.ok(htmlText.includes("<!DOCTYPE html>"), "index.html missing doctype");
+
+    // static assets resolve from the pwa/ dir
+    for (const asset of ["/styles/base.css", "/styles/themes.css", "/styles/components.css", "/js/app.js", "/js/client.js", "/manifest.webmanifest"]) {
+      const r = await request.get(`${compiledUrl}${asset}`);
+      expect(r.ok(), `${asset} should be 200`).toBeTruthy();
+    }
+
+    // API works too
+    const state = await request.get(`${compiledUrl}/api/state`);
+    expect(state.ok()).toBeTruthy();
+    const body = await state.json();
+    assert.ok(Array.isArray(body.metrics), "state.metrics should be an array");
   });
 });

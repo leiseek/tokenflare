@@ -25,7 +25,29 @@ import type { ClientMsg, ServerMsg, SnapshotDelta } from "./state/types.js";
 import type { QuotaMetric, QuotaSource, TaskStatus } from "./state/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PWA_DIR = path.resolve(__dirname, "..", "..", "pwa");
+
+/**
+ * Resolve the PWA static dir. Works in three run modes:
+ *  - tsx/source: this file is at <root>/server/src/  -> pwa is ../../pwa
+ *  - compiled:   this file is at <root>/server/dist/src/ -> pwa is ../../../pwa
+ *  - override:   VIBE_PWA_DIR env var (for packaged installs)
+ * Returns the first candidate that contains an index.html.
+ */
+function resolvePwaDir(): string {
+  const candidates = [
+    process.env.VIBE_PWA_DIR,
+    path.resolve(__dirname, "..", "..", "pwa"), // tsx/source
+    path.resolve(__dirname, "..", "..", "..", "pwa"), // compiled dist
+    path.resolve(__dirname, "..", "pwa"), // if pwa copied next to src
+  ].filter((p): p is string => !!p);
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, "index.html"))) return c;
+  }
+  // Fall back to the first candidate so error messages point somewhere.
+  return candidates[0] ?? path.resolve(__dirname, "..", "..", "pwa");
+}
+
+const PWA_DIR = resolvePwaDir();
 
 /** Max revision gap before we force a full snapshot instead of a delta. */
 const MAX_DELTA_GAP = 50;

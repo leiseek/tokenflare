@@ -36,6 +36,16 @@ function main(): void {
   });
 
   const server = createServer({ config, store });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`\n[error] port ${config.server.port} is already in use.`);
+      console.error(`        Set VIBE_PORT (or config.server.port) to a free port, or stop the other process.`);
+      console.error(`        Example: VIBE_PORT=7332 npm start`);
+    } else {
+      console.error(`\n[error] server failed: ${err.message}`);
+    }
+    process.exit(1);
+  });
   server.listen(config.server.port, config.server.host, () => {
     const port = config.server.port;
     const host = config.server.host;
