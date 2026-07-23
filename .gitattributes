@@ -1,0 +1,13 @@
+# Force LF line endings on shell scripts so they run correctly on macOS/Linux.
+# (Without this, a checkout on Windows adds CRLF, and bash on mac fails with
+#  "bash\r: No such file or directory" on the shebang line.)
+*.sh           text eol=lf
+*.mjs          text eol=lf
+*.ts           text eol=auto
+*.js           text eol=auto
+*.css          text eol=auto
+*.html         text eol=auto
+*.json         text eol=auto
+*.md           text eol=auto
+*.webmanifest  text eol=auto
+*.svg          text eol=lf

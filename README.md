@@ -64,6 +64,8 @@ See [`docs/specs/2026-07-24-vibe-display-design.md`](docs/specs/2026-07-24-vibe-
 
 ## Wiring up real agent hooks (optional, for live task status)
 
+**Windows (PowerShell):**
+
 ```powershell
 # Register hooks into Codex CLI's config.toml
 .\scripts\register-codex-hook.ps1
@@ -75,7 +77,21 @@ See [`docs/specs/2026-07-24-vibe-display-design.md`](docs/specs/2026-07-24-vibe-
 .\scripts\register-codex-hook.ps1 -UsePowerShellShim
 ```
 
-To remove: `.\scripts\unregister-codex-hook.ps1` / `.\scripts\unregister-claude-hook.ps1`.
+**macOS / Linux (bash):**
+
+```bash
+# Register hooks into Codex CLI's config.toml
+./scripts/register-codex-hook.sh
+
+# Register hooks into Claude Code's settings.json
+./scripts/register-claude-hook.sh
+
+# Use the pure-bash shim (curl) if node isn't on PATH at hook time:
+./scripts/register-codex-hook.sh --sh bash
+./scripts/register-claude-hook.sh --sh bash http://192.168.1.10:7331   # custom server URL
+```
+
+To remove: `unregister-codex-hook.{ps1,sh}` / `unregister-claude-hook.{ps1,sh}`.
 
 The shim is **fail-open**: it always exits 0 within 1s and never affects the agent if the display server is offline.
 
@@ -115,9 +131,20 @@ Env overrides: `VIBE_HOST`, `VIBE_PORT`, `VIBE_CODEX_POLL`, `VIBE_CONFIG`.
 
 ```bash
 npm test          # 50 unit tests (sanitize, classify, reducer, metrics, format, store, codexWham)
-npm run test:e2e  # 8 Playwright e2e tests (hook -> server -> WS -> rendered DOM)
+npm run test:e2e  # 9 Playwright e2e tests (hook -> server -> WS -> rendered DOM, incl. compiled-build PWA serving)
 npm run typecheck # strict TypeScript, zero errors
 ```
+
+## Platforms
+
+The **server** (Node.js) and the **PWA** (browser) run on any OS. The **hook registration scripts** are provided in two flavors:
+
+| Platform | Register / Unregister | Fallback shim (when node isn't on PATH) |
+|---|---|---|
+| **Windows** | `scripts/*.ps1` (PowerShell) | `hook-forward.ps1` |
+| **macOS / Linux** | `scripts/*.sh` (bash) | `hook-forward.sh` (curl-based) |
+
+`.gitattributes` forces `.sh` files to LF so they run correctly after a Windows checkout.
 
 ## Manual self-test checklist
 
