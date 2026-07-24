@@ -86,15 +86,19 @@ function pickAllow(raw: Record<string, unknown>, allow: Set<string>): Record<str
   return out;
 }
 
-/** Derive a short, human-readable label from cwd or transcript path. */
+/**
+ * Derive a short, human-readable label from cwd or transcript path.
+ *
+ * Handles both POSIX (/) and Windows (\) separators on any host, since a
+ * Codex/Claude hook on Windows will send a backslash path that this server
+ * might be running anywhere.
+ */
 export function deriveLabel(cwd?: string, transcriptPath?: string): string {
   if (cwd && cwd.trim() !== "") {
-    try {
-      const base = path.basename(cwd.replace(/[\\/]+$/, ""));
-      if (base) return base;
-    } catch {
-      /* ignore */
-    }
+    const trimmed = cwd.replace(/[\\/]+$/, "");
+    // Normalize backslashes to forward slashes so basename works cross-platform.
+    const base = trimmed.replace(/\\/g, "/").split("/").filter(Boolean).pop();
+    if (base) return base;
   }
   if (transcriptPath && transcriptPath.trim() !== "") {
     try {
