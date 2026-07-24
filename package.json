@@ -1,6 +1,6 @@
 {
   "name": "vibe-display",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Turn a decommissioned Android phone into a Codex / Claude Code vibe-coding status indicator.",
   "workspaces": [
@@ -19,6 +19,25 @@
   "engines": {
     "node": ">=20"
   },
-  "author": "vibe-display",
-  "license": "MIT"
+  "author": "vibe-display contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/vibe-display/vibe-display",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vibe-display/vibe-display.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vibe-display/vibe-display/issues"
+  },
+  "keywords": [
+    "codex",
+    "claude-code",
+    "claude",
+    "ai-coding",
+    "status-indicator",
+    "pwa",
+    "android",
+    "vibe-coding",
+    "quota-monitor"
+  ]
 }
