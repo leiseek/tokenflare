@@ -2,6 +2,8 @@
 
 # 🔥 Tokenflare
 
+> :warning: **Not affiliated with [JumpsecLabs/TokenFlare](https://github.com/JumpsecLabs/TokenFlare)** — an unrelated AiTM security-testing tool that happens to share a similar name. Tokenflare (this project) is a read-only status dashboard for AI coding agents and never transmits your credentials anywhere.
+
 **A visual dashboard for vibe coding with Codex & Claude Code.**
 
 See your agent's task status at a glance (a glowing traffic light), watch your
@@ -43,7 +45,7 @@ at it, or repurpose an old phone into a desk status panel.
 ## 🚀 Quickstart (60 seconds)
 
 ```bash
-git clone https://github.com/tokenflare/tokenflare.git
+git clone https://github.com/leiseek/tokenflare.git
 cd tokenflare
 
 # Windows

@@ -21,13 +21,13 @@
   },
   "author": "Tokenflare contributors",
   "license": "MIT",
-  "homepage": "https://github.com/tokenflare/tokenflare",
+  "homepage": "https://github.com/leiseek/tokenflare",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tokenflare/tokenflare.git"
+    "url": "https://github.com/leiseek/tokenflare.git"
   },
   "bugs": {
-    "url": "https://github.com/tokenflare/tokenflare/issues"
+    "url": "https://github.com/leiseek/tokenflare/issues"
   },
   "keywords": [
     "codex",

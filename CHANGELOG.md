@@ -46,5 +46,5 @@ status indicator for Codex and Claude Code.
 - Codex `config.toml` command strings correctly escape inner double quotes.
 - Claude hook unregister no longer leaves empty `"Event": []` keys behind.
 
-[Unreleased]: https://github.com/tokenflare/tokenflare/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/tokenflare/tokenflare/releases/tag/v1.0.0
+[Unreleased]: https://github.com/leiseek/tokenflare/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/leiseek/tokenflare/releases/tag/v1.0.0
