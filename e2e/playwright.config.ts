@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * Playwright config for Vibe Display e2e.
+ * Playwright config for Tokenflare e2e.
  *
  * The server is started by a global setup that boots `tsx server/src/index.ts`
  * on a free port and points the tests at it. Landscape phone viewport.

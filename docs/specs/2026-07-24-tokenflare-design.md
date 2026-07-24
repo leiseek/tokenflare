@@ -1,8 +1,8 @@
-# Vibe Display — Design Spec
+# Tokenflare — Design Spec
 
 **Date:** 2026-07-24
 **Status:** Implemented (v1.0.0)
-**Owner:** vibe-display contributors
+**Owner:** Tokenflare contributors
 
 ## 1. Overview
 
@@ -93,10 +93,10 @@ The PC is the **host** (it has the credentials and the editor hooks). The phone 
 ## 4. Repository layout
 
 ```
-vibe-display/        (repo root)
+tokenflare/        (repo root)
 ├─ docs\
 │  └─ specs\
-│     └─ 2026-07-24-vibe-display-design.md      ← this file
+│     └─ 2026-07-24-tokenflare-design.md      ← this file
 ├─ server\                                       ← host (Node.js + TS)
 │  ├─ package.json
 │  ├─ tsconfig.json
@@ -151,7 +151,7 @@ vibe-display/        (repo root)
 │  ├─ unregister-codex-hook.ps1
 │  └─ unregister-claude-hook.ps1
 ├─ config\
-│  └─ vibe-display.config.json                    ← example config (quota fallback, ports, codex oauth)
+│  └─ tokenflare.config.json                    ← example config (quota fallback, ports, codex oauth)
 ├─ e2e\                                           ← Playwright
 │  ├─ playwright.config.ts
 │  └─ tests\
@@ -263,10 +263,10 @@ For `semantics: "used"` metrics, convert first: `remaining = 100 - usedPercent`.
 - Language: TypeScript 5, strict mode.
 - HTTP: Node built-in `http` (or `fastify` if richer routing needed — start with built-in to keep deps minimal).
 - WebSocket: `ws` library.
-- Config: `config/vibe-display.config.json` + env overrides.
+- Config: `config/tokenflare.config.json` + env overrides.
 - No DB. In-memory authoritative state (single desk, single process). State is rebuilt on restart from hooks; quota is re-fetched.
 
-### 6.2 Config schema (`config/vibe-display.config.json`)
+### 6.2 Config schema (`config/tokenflare.config.json`)
 ```jsonc
 {
   "server": { "host": "0.0.0.0", "port": 7331 },
@@ -455,7 +455,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 1. **Server bind + auth → LAN open, no auth.** Bind `0.0.0.0:7331`; phone opens `http://<pc-ip>:7331/` on the same LAN. Trusted home/office network assumed. (Future: optional shared-secret token if ever exposed beyond the desk.)
 2. **Codex OAuth → auto-read `~/.codex/auth.json`.** The server reads Codex OAuth tokens (and the ChatGPT account id) from the existing Codex CLI auth file at startup, and re-reads it as tokens rotate (Codex CLI rotates that file itself; we just watch it). No manual paste. The manual `codex.oauth` config block remains as an *override* for users without Codex CLI installed.
-3. **Claude quota → config/observed only.** No live Anthropic call. Claude 5h/7d come from `config/vibe-display.config.json` `claude.fallback` (and updatable via `POST /api/quota/mock`). Claude **task status** still tracks live via hooks (the reducer is provider-agnostic).
+3. **Claude quota → config/observed only.** No live Anthropic call. Claude 5h/7d come from `config/tokenflare.config.json` `claude.fallback` (and updatable via `POST /api/quota/mock`). Claude **task status** still tracks live via hooks (the reducer is provider-agnostic).
 4. **Default theme/font → neon-dark + JetBrains Mono.**
 5. **Reset count semantics → `reset_credits_available`** from wham `/rate-limit-reset-credits`, i.e. the number of unused rate-limit reset credits. Matches "Codex 剩余重置次数".
 

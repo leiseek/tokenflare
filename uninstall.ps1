@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Uninstall vibe-display: remove build artifacts and (optionally) hooks.
+  Uninstall tokenflare: remove build artifacts and (optionally) hooks.
 
 .DESCRIPTION
   Reverses what install.ps1 did and what the hook-registration scripts did.
@@ -37,7 +37,7 @@ function Confirm($prompt) {
 }
 
 Write-Host ""
-Write-Host "  vibe-display uninstaller" -ForegroundColor White
+Write-Host "  tokenflare uninstaller" -ForegroundColor White
 Write-Host "  ------------------------" -ForegroundColor White
 Write-Host ""
 

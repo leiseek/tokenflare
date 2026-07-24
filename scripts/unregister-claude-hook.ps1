@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Remove Vibe Display hooks from Claude Code's settings.json (reverse of register).
+  Remove Tokenflare hooks from Claude Code's settings.json (reverse of register).
 #>
 $ErrorActionPreference = "Stop"
 $configPath = Join-Path $env:USERPROFILE ".claude\settings.json"
@@ -22,7 +22,7 @@ if ($settings.ContainsKey("hooks")) {
   $events = @("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification", "Stop")
   foreach ($ev in $events) {
     if ($settings["hooks"].ContainsKey($ev)) {
-      # Drop only entries whose command mentions vibe-display's hook-forward shim.
+      # Drop only entries whose command mentions tokenflare's hook-forward shim.
       $filtered = @()
       foreach ($entry in @($settings["hooks"][$ev])) {
         $commands = @($entry.hooks | ForEach-Object { $_.command } | Where-Object { $_ })
@@ -44,4 +44,4 @@ if ($settings.ContainsKey("hooks")) {
 
 $json = $settings | ConvertTo-Json -Depth 10
 Set-Content -Path $configPath -Value $json -Encoding UTF8
-Write-Host "Removed Vibe Display hooks from $configPath" -ForegroundColor Green
+Write-Host "Removed Tokenflare hooks from $configPath" -ForegroundColor Green

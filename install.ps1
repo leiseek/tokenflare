@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-  Install vibe-display: check prerequisites, install deps, build the server.
+  Install tokenflare: check prerequisites, install deps, build the server.
 
 .DESCRIPTION
-  One-command installer for vibe-display. Verifies Node.js 20+, runs npm install,
+  One-command installer for tokenflare. Verifies Node.js 20+, runs npm install,
   builds the server, and (optionally) installs the Playwright browser for e2e
   tests. Prints clear next steps. Safe to re-run.
 
@@ -36,7 +36,7 @@ function Write-Warn($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
 function Write-Err($msg)  { Write-Host "    ERROR: $msg" -ForegroundColor Red }
 
 Write-Host ""
-Write-Host "  vibe-display installer" -ForegroundColor White
+Write-Host "  tokenflare installer" -ForegroundColor White
 Write-Host "  ----------------------" -ForegroundColor White
 Write-Host ""
 
@@ -46,7 +46,7 @@ $nodeExe = Get-Command node -ErrorAction SilentlyContinue
 if (-not $nodeExe) {
   Write-Err "Node.js is not installed or not on PATH."
   Write-Host ""
-  Write-Host "    vibe-display requires Node.js 20 or later." -ForegroundColor White
+  Write-Host "    tokenflare requires Node.js 20 or later." -ForegroundColor White
   Write-Host "    Install it from https://nodejs.org/ and re-run this script." -ForegroundColor White
   Write-Host ""
   exit 1

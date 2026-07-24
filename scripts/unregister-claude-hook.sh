@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Remove Vibe Display hooks from Claude Code's settings.json (macOS/Linux).
+# Remove Tokenflare hooks from Claude Code's settings.json (macOS/Linux).
 # Reverse of register-claude-hook.sh. Only drops entries whose command
 # references our hook-forward shim; preserves other hooks.
 #
@@ -96,4 +96,4 @@ else
   exit 1
 fi
 
-echo "Removed Vibe Display hooks from $CONFIG_PATH"
+echo "Removed Tokenflare hooks from $CONFIG_PATH"

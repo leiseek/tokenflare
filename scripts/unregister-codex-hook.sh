@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Remove Vibe Display hooks from Codex CLI's config.toml (macOS/Linux).
+# Remove Tokenflare hooks from Codex CLI's config.toml (macOS/Linux).
 # Reverse of register-codex-hook.sh.
 #
 set -euo pipefail
@@ -12,8 +12,8 @@ if [ ! -f "$CONFIG_PATH" ]; then
   exit 0
 fi
 
-MARKER="# >>> vibe-display hooks >>>"
-END_MARKER="# <<< vibe-display hooks <<<"
+MARKER="# >>> tokenflare hooks >>>"
+END_MARKER="# <<< tokenflare hooks <<<"
 
 # Remove the managed block (awk). Also drop an orphaned empty [hooks] table
 # left behind if we were the only subscriber.
@@ -35,7 +35,7 @@ AFTER="$(printf '%s\n' "$AFTER" | awk '
 
 if [ "$BEFORE" != "$AFTER" ]; then
   printf '%s\n' "$AFTER" > "$CONFIG_PATH"
-  echo "Removed Vibe Display hooks from $CONFIG_PATH"
+  echo "Removed Tokenflare hooks from $CONFIG_PATH"
 else
-  echo "No Vibe Display hooks block found in $CONFIG_PATH — nothing to remove."
+  echo "No Tokenflare hooks block found in $CONFIG_PATH — nothing to remove."
 fi

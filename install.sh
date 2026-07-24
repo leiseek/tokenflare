@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# vibe-display installer (macOS/Linux).
+# tokenflare installer (macOS/Linux).
 #
 # Verifies Node.js 20+, runs npm install, builds the server, and (optionally)
 # installs the Playwright browser for e2e tests. Safe to re-run.
@@ -35,7 +35,7 @@ c_warn() { printf '    \033[33m%s\033[0m\n' "$1"; }
 c_err()  { printf '    \033[31mERROR: %s\033[0m\n' "$1"; }
 
 echo ""
-echo "  vibe-display installer"
+echo "  tokenflare installer"
 echo "  ----------------------"
 echo ""
 
@@ -44,7 +44,7 @@ c_step "Checking Node.js..."
 if ! command -v node >/dev/null 2>&1; then
   c_err "Node.js is not installed or not on PATH."
   echo ""
-  echo "    vibe-display requires Node.js 20 or later." >&2
+  echo "    tokenflare requires Node.js 20 or later." >&2
   echo "    Install it from https://nodejs.org/ (or use nvm/fnm/volta) and re-run." >&2
   echo ""
   exit 1

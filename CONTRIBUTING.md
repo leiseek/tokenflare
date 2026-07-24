@@ -1,6 +1,6 @@
-# Contributing to vibe-display
+# Contributing to tokenflare
 
-Thanks for your interest in improving vibe-display! This is a small project,
+Thanks for your interest in improving tokenflare! This is a small project,
 so the process is lightweight.
 
 ## Quick contribution guide
@@ -46,7 +46,7 @@ npm run test:e2e     # e2e (needs: npx playwright install chromium)
 
 ## Design principles (please respect these)
 
-- **Observe-only / fail-open.** Nothing vibe-display does should ever be able
+- **Observe-only / fail-open.** Nothing tokenflare does should ever be able
   to block, change, or break the agent. Hooks must always exit 0 within 1s.
 - **Content-scrubbing at the edge.** Raw prompts, transcripts, and credentials
   never travel past the sanitizer. If you add a new hook field, it must be on

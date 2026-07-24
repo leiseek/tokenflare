@@ -35,7 +35,7 @@ async function bootServer(mode: "source" | "compiled" = "source"): Promise<strin
 
   // Write a test config that disables codex polling (no network in CI).
   const tmp = mkdtempSync(join(tmpdir(), "vibe-e2e-"));
-  const configPath = join(tmp, "vibe-display.config.json");
+  const configPath = join(tmp, "tokenflare.config.json");
   writeFileSync(
     configPath,
     JSON.stringify({
@@ -66,9 +66,9 @@ async function bootServer(mode: "source" | "compiled" = "source"): Promise<strin
     cwd: ROOT,
     env: {
       ...process.env,
-      VIBE_HOST: "127.0.0.1",
-      VIBE_PORT: String(port),
-      VIBE_CONFIG: configPath,
+      TOKENFLARE_HOST: "127.0.0.1",
+      TOKENFLARE_PORT: String(port),
+      TOKENFLARE_CONFIG: configPath,
     },
     stdio: ["ignore", "pipe", "pipe"],
     // Required on Windows to launch npx.cmd (.exe files like node don't need it).
@@ -104,7 +104,7 @@ async function killServer() {
   serverProc = null;
 }
 
-test.describe.serial("Vibe Display end-to-end", () => {
+test.describe.serial("Tokenflare end-to-end", () => {
   test.beforeAll(async () => {
     baseUrl = await bootServer();
   });
@@ -134,7 +134,7 @@ test.describe.serial("Vibe Display end-to-end", () => {
       body: JSON.stringify({
         hook_event_name: "SessionStart",
         session_id: "e2e-1",
-        cwd: "D:/proj/vibe-display",
+        cwd: "D:/proj/tokenflare",
       }),
     });
     assert.equal(res.status, 200);
@@ -142,7 +142,7 @@ test.describe.serial("Vibe Display end-to-end", () => {
     // The PWA should reflect the WS delta within a moment.
     await expect(page.locator("#statusWord")).toHaveText("RUNNING");
     await expect(page.locator("#statusDot")).toHaveAttribute("data-status", "running");
-    await expect(page.locator("#taskLabel")).toHaveText("vibe-display");
+    await expect(page.locator("#taskLabel")).toHaveText("tokenflare");
   });
 
   test("waiting hook turns the hero amber", async ({ page }) => {
@@ -251,7 +251,7 @@ test.describe.serial("Vibe Display end-to-end", () => {
  * This guards the exact bug where relative PWA-path resolution worked under
  * tsx (src/) but broke under the compiled artifact (dist/src/).
  */
-test.describe.serial("Vibe Display compiled build serves the PWA", () => {
+test.describe.serial("Tokenflare compiled build serves the PWA", () => {
   let compiledUrl = "";
 
   test.beforeAll(async () => {

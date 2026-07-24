@@ -1,8 +1,8 @@
 {
-  "name": "@vibe-display/pwa",
+  "name": "@tokenflare/pwa",
   "version": "0.1.0",
   "private": true,
-  "description": "Vibe Display phone PWA: landscape status indicator rendered from the server's snapshot.",
+  "description": "Tokenflare phone PWA: landscape status indicator rendered from the server's snapshot.",
   "scripts": {
     "typecheck": "echo \"PWA is plain JS, nothing to typecheck\" && exit 0"
   }

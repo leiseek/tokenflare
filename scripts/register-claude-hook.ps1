@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Register Vibe Display hooks into Claude Code's settings.json.
+  Register Tokenflare hooks into Claude Code's settings.json.
 
 .DESCRIPTION
   Edits %USERPROFILE%\.claude\settings.json so Claude Code fires our fail-open
@@ -9,7 +9,7 @@
   register-claude-hook.ps1, adapted to POST to our server.
 
 .PARAMETER ServerUrl
-  Base URL of the Vibe Display server. Default: http://127.0.0.1:7331
+  Base URL of the Tokenflare server. Default: http://127.0.0.1:7331
 
 .PARAMETER UsePowerShellShim
   Use the pure-PowerShell forwarder instead of the node one.
@@ -67,7 +67,7 @@ foreach ($ev in $events) {
 $json = $settings | ConvertTo-Json -Depth 10
 Set-Content -Path $configPath -Value $json -Encoding UTF8
 
-Write-Host "Registered Vibe Display hooks for Claude Code at: $configPath" -ForegroundColor Green
+Write-Host "Registered Tokenflare hooks for Claude Code at: $configPath" -ForegroundColor Green
 Write-Host "  events : $($events -join ', ')"
 Write-Host "  command: $command"
 Write-Host ""

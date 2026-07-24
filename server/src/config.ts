@@ -1,5 +1,5 @@
 /**
- * Config loading. Reads config/vibe-display.config.json (relative to the
+ * Config loading. Reads config/tokenflare.config.json (relative to the
  * workspace root) with env overrides. Bores even with a missing/partial file
  * — every section has defaults so the server never refuses to boot.
  */
@@ -80,15 +80,15 @@ const DEFAULTS: AppConfig = {
 /** Resolve the config file path. Looks for <root>/config/*.config.json. */
 function resolveConfigPath(): string | null {
   // Explicit override wins (used by tests + alternate installs).
-  if (process.env.VIBE_CONFIG && fs.existsSync(process.env.VIBE_CONFIG)) {
-    return process.env.VIBE_CONFIG;
+  if (process.env.TOKENFLARE_CONFIG && fs.existsSync(process.env.TOKENFLARE_CONFIG)) {
+    return process.env.TOKENFLARE_CONFIG;
   }
   // Walk up from cwd to find a config dir, else use the workspace root.
   const candidates = [
-    path.resolve(process.cwd(), "config", "vibe-display.config.json"),
-    path.resolve(process.cwd(), "vibe-display.config.json"),
+    path.resolve(process.cwd(), "config", "tokenflare.config.json"),
+    path.resolve(process.cwd(), "tokenflare.config.json"),
     // When run from server/ during dev:
-    path.resolve(process.cwd(), "..", "config", "vibe-display.config.json"),
+    path.resolve(process.cwd(), "..", "config", "tokenflare.config.json"),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
@@ -124,9 +124,9 @@ export function loadConfig(): AppConfig {
   let cfg = merge(DEFAULTS, fileConfig);
 
   // Env overrides.
-  if (process.env.VIBE_HOST) cfg.server.host = String(process.env.VIBE_HOST);
-  if (process.env.VIBE_PORT) cfg.server.port = Number(process.env.VIBE_PORT) || cfg.server.port;
-  if (process.env.VIBE_CODEX_POLL) cfg.codex.pollSeconds = Number(process.env.VIBE_CODEX_POLL) || cfg.codex.pollSeconds;
+  if (process.env.TOKENFLARE_HOST) cfg.server.host = String(process.env.TOKENFLARE_HOST);
+  if (process.env.TOKENFLARE_PORT) cfg.server.port = Number(process.env.TOKENFLARE_PORT) || cfg.server.port;
+  if (process.env.TOKENFLARE_CODEX_POLL) cfg.codex.pollSeconds = Number(process.env.TOKENFLARE_CODEX_POLL) || cfg.codex.pollSeconds;
 
   return cfg;
 }

@@ -5,7 +5,7 @@
  * stored here (default derived from the page's origin). No data is sent anywhere.
  */
 
-const STORAGE_KEY = "vibe-display.prefs.v1";
+const STORAGE_KEY = "tokenflare.prefs.v1";
 
 const FONTS = {
   jetbrains: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap",

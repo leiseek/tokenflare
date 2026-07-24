@@ -31,7 +31,7 @@ status indicator for Codex and Claude Code.
   sanitize, classify, reducer, metrics, format, store, codexWham. 9 Playwright
   e2e tests covering hook → server → WebSocket → rendered DOM, including a
   regression test that the compiled build serves the PWA.
-- **Config** (`config/vibe-display.config.json`): all quota has sensible
+- **Config** (`config/tokenflare.config.json`): all quota has sensible
   fallbacks so the display works immediately with zero credentials.
 - **Privacy**: hooks keep only an allow-list (`session_id`, `hook_event_name`,
   `cwd`, `transcript_path`); payloads containing secret markers are
@@ -46,5 +46,5 @@ status indicator for Codex and Claude Code.
 - Codex `config.toml` command strings correctly escape inner double quotes.
 - Claude hook unregister no longer leaves empty `"Event": []` keys behind.
 
-[Unreleased]: https://github.com/vibe-display/vibe-display/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/vibe-display/vibe-display/releases/tag/v1.0.0
+[Unreleased]: https://github.com/tokenflare/tokenflare/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/tokenflare/tokenflare/releases/tag/v1.0.0

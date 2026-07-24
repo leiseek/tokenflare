@@ -1,5 +1,5 @@
 /**
- * Vibe Display server entry point.
+ * Tokenflare server entry point.
  *
  * Boots the in-memory store, seeds it with fallback quota (so the display is
  * never blank), starts the Codex wham poller, and listens on the configured
@@ -39,8 +39,8 @@ function main(): void {
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       console.error(`\n[error] port ${config.server.port} is already in use.`);
-      console.error(`        Set VIBE_PORT (or config.server.port) to a free port, or stop the other process.`);
-      console.error(`        Example: VIBE_PORT=7332 npm start`);
+      console.error(`        Set TOKENFLARE_PORT (or config.server.port) to a free port, or stop the other process.`);
+      console.error(`        Example: TOKENFLARE_PORT=7332 npm start`);
     } else {
       console.error(`\n[error] server failed: ${err.message}`);
     }
@@ -59,7 +59,7 @@ function main(): void {
       console.log("│  " + content + " ".repeat(pad) + " │");
     };
     console.log("┌" + "─".repeat(INNER + 2) + "┐");
-    line("Vibe Display server is up");
+    line("Tokenflare server is up");
     line("local:   http://127.0.0.1:" + port);
     for (const ip of lanIps.slice(0, 3)) {
       line("phone:   http://" + ip + ":" + port);

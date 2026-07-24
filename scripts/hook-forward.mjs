@@ -3,7 +3,7 @@
  * Codex/Claude hook shim — fail-open forwarder.
  *
  * Reads the provider's hook JSON from stdin, posts a sanitized copy to the
- * Vibe Display server, and exits 0 regardless of outcome. The hook must NEVER
+ * Tokenflare server, and exits 0 regardless of outcome. The hook must NEVER
  * block or fail the agent: all I/O is wrapped, with a hard 1s timeout.
  *
  * Usage:  node hook-forward.mjs <codex|claude> [serverUrl]
@@ -14,7 +14,7 @@
 import http from "node:http";
 
 const provider = (process.argv[2] || "").toLowerCase();
-const serverUrl = process.argv[3] || process.env.VIBE_SERVER || "http://127.0.0.1:7331";
+const serverUrl = process.argv[3] || process.env.TOKENFLARE_SERVER || "http://127.0.0.1:7331";
 
 if (provider !== "codex" && provider !== "claude") {
   // Bad invocation — but we still exit 0 to never block the agent.

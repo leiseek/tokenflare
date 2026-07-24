@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Register Vibe Display hooks into Codex CLI's config.toml (macOS/Linux).
+# Register Tokenflare hooks into Codex CLI's config.toml (macOS/Linux).
 #
 # Edits ~/.codex/config.toml so Codex CLI fires our fail-open forwarder on
 # SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, and Stop.
@@ -16,7 +16,7 @@
 #
 set -euo pipefail
 
-SERVER_URL="${VIBE_SERVER:-http://127.0.0.1:7331}"
+SERVER_URL="${TOKENFLARE_SERVER:-http://127.0.0.1:7331}"
 SHIM="node"
 
 # Parse args: --sh <node|bash> [serverUrl]
@@ -67,8 +67,8 @@ CONFIG="$(cat "$CONFIG_PATH" 2>/dev/null || true)"
 # Build the managed block. Codex's [hooks] table maps event -> [command].
 EVENTS=(SessionStart UserPromptSubmit PreToolUse PostToolUse Notification Stop)
 
-MARKER="# >>> vibe-display hooks >>>"
-END_MARKER="# <<< vibe-display hooks <<<"
+MARKER="# >>> tokenflare hooks >>>"
+END_MARKER="# <<< tokenflare hooks <<<"
 
 BLOCK=""
 BLOCK+="\n[hooks]\n"
@@ -95,7 +95,7 @@ CONFIG_CLEAN="$(printf '%s\n' "$CONFIG" | awk -v ms="$MARKER" -v me="$END_MARKER
   printf '%s\n' "$END_MARKER"
 } > "$CONFIG_PATH"
 
-echo "Registered Vibe Display hooks for Codex at: $CONFIG_PATH"
+echo "Registered Tokenflare hooks for Codex at: $CONFIG_PATH"
 echo "  events : ${EVENTS[*]}"
 echo "  command: $COMMAND"
 echo ""

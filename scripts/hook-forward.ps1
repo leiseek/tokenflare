@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-  Pure-PowerShell fail-open hook forwarder for Vibe Display.
+  Pure-PowerShell fail-open hook forwarder for Tokenflare.
 
 .DESCRIPTION
-  Reads the provider hook JSON from stdin, posts it to the Vibe Display server,
+  Reads the provider hook JSON from stdin, posts it to the Tokenflare server,
   and always exits 0 (never blocks the agent). Use this variant when you can't
   guarantee `node` is on PATH at hook time.
 
@@ -13,14 +13,14 @@
   "codex" or "claude".
 
 .PARAMETER ServerUrl
-  Base URL of the Vibe Display server. Default: http://127.0.0.1:7331
+  Base URL of the Tokenflare server. Default: http://127.0.0.1:7331
 #>
 param(
   [Parameter(Mandatory = $true, Position = 0)]
   [ValidateSet("codex", "claude")]
   [string]$Provider,
 
-  [string]$ServerUrl = $env:VIBE_SERVER
+  [string]$ServerUrl = $env:TOKENFLARE_SERVER
 )
 
 if (-not $ServerUrl) { $ServerUrl = "http://127.0.0.1:7331" }

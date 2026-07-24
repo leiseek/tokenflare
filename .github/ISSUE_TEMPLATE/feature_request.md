@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for vibe-display
+about: Suggest an idea for tokenflare
 title: "[feat] "
 labels: enhancement
 body:
@@ -25,4 +25,4 @@ body:
       description: What other ways have you tried or considered?
 ---
 
-<!-- vibe-display favors small, focused features that fit the observe-only / fail-open design. See CONTRIBUTING.md. -->
+<!-- tokenflare favors small, focused features that fit the observe-only / fail-open design. See CONTRIBUTING.md. -->

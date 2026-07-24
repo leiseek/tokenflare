@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Register Vibe Display hooks into Codex CLI's config.toml.
+  Register Tokenflare hooks into Codex CLI's config.toml.
 
 .DESCRIPTION
   Edits %USERPROFILE%\.codex\config.toml so Codex CLI fires our fail-open
@@ -8,7 +8,7 @@
   Ported from pulse-island's register-hook.ps1, adapted to POST to our server.
 
 .PARAMETER ServerUrl
-  Base URL of the Vibe Display server. Default: http://127.0.0.1:7331
+  Base URL of the Tokenflare server. Default: http://127.0.0.1:7331
 
 .PARAMETER UsePowerShellShim
   Use the pure-PowerShell forwarder instead of the node one (when node isn't
@@ -53,8 +53,8 @@ if ($UsePowerShellShim) {
 $events = @("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification", "Stop")
 
 # Build the [hooks] block.
-$marker = "# >>> vibe-display hooks >>>"
-$endMarker = "# <<< vibe-display hooks <<<"
+$marker = "# >>> tokenflare hooks >>>"
+$endMarker = "# <<< tokenflare hooks <<<"
 
 $block = "$marker`r`n[hooks]`r`n"
 foreach ($ev in $events) {
@@ -62,19 +62,19 @@ foreach ($ev in $events) {
 }
 $block += "$endMarker`r`n"
 
-# Remove any previous vibe-display block, then append ours.
-if ($config -match "(?s)(?<=\n)# >>> vibe-display hooks >>>.*?# <<< vibe-display hooks <<<\r?\n") {
-  $config = $config -replace "(?s)(?<=\n)# >>> vibe-display hooks >>>.*?# <<< vibe-display hooks <<<\r?\n", ""
+# Remove any previous tokenflare block, then append ours.
+if ($config -match "(?s)(?<=\n)# >>> tokenflare hooks >>>.*?# <<< tokenflare hooks <<<\r?\n") {
+  $config = $config -replace "(?s)(?<=\n)# >>> tokenflare hooks >>>.*?# <<< tokenflare hooks <<<\r?\n", ""
 }
-if ($config -match "# >>> vibe-display hooks >>>") {
-  $config = $config -replace "(?s)# >>> vibe-display hooks >>>.*?# <<< vibe-display hooks <<<\r?\n?", ""
+if ($config -match "# >>> tokenflare hooks >>>") {
+  $config = $config -replace "(?s)# >>> tokenflare hooks >>>.*?# <<< tokenflare hooks <<<\r?\n?", ""
 }
 if (-not $config.EndsWith("`n") -and $config -ne "") { $config += "`n" }
 $config += $block
 
 Set-Content -Path $configPath -Value $config -NoNewline:$false -Encoding UTF8
 
-Write-Host "Registered Vibe Display hooks for Codex at: $configPath" -ForegroundColor Green
+Write-Host "Registered Tokenflare hooks for Codex at: $configPath" -ForegroundColor Green
 Write-Host "  events : $($events -join ', ')"
 Write-Host "  command: $command"
 Write-Host ""

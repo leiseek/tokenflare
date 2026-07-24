@@ -1,5 +1,5 @@
 /**
- * Core domain types for Vibe Display.
+ * Core domain types for Tokenflare.
  *
  * These are the provider-neutral shapes that flow from hook ingress through
  * the reducer into the snapshot the PWA renders. Inspired by pulse-island's

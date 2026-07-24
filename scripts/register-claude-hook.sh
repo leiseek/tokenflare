@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Register Vibe Display hooks into Claude Code's settings.json (macOS/Linux).
+# Register Tokenflare hooks into Claude Code's settings.json (macOS/Linux).
 #
 # Edits ~/.claude/settings.json so Claude Code fires our fail-open forwarder on
 # SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Notification
@@ -15,7 +15,7 @@
 #
 set -euo pipefail
 
-SERVER_URL="${VIBE_SERVER:-http://127.0.0.1:7331}"
+SERVER_URL="${TOKENFLARE_SERVER:-http://127.0.0.1:7331}"
 SHIM="node"
 
 while [ $# -gt 0 ]; do
@@ -125,7 +125,7 @@ else
   exit 1
 fi
 
-echo "Registered Vibe Display hooks for Claude Code at: $CONFIG_PATH"
+echo "Registered Tokenflare hooks for Claude Code at: $CONFIG_PATH"
 echo "  events : ${EVENTS[*]}"
 echo "  command: $COMMAND"
 echo ""

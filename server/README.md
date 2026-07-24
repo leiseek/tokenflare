@@ -1,4 +1,4 @@
-# @vibe-display/server
+# @tokenflare/server
 
 The host server. Runs on the PC. Responsibilities:
 
@@ -24,7 +24,7 @@ npm run typecheck  # strict tsc --noEmit
 |---|---|
 | `src/index.ts` | entry: boots store, seeds fallback quota, starts poller, listens |
 | `src/server.ts` | HTTP + WS server, REST handlers, static PWA serving |
-| `src/config.ts` | config load (file + env), `VIBE_CONFIG` override |
+| `src/config.ts` | config load (file + env), `TOKENFLARE_CONFIG` override |
 | `src/state/store.ts` | in-memory authoritative state + revision + broadcast |
 | `src/state/reducer.ts` | pure hook→task reducer with terminal-protection |
 | `src/hooks/sanitize.ts` | allow-list + secret-reject edge sanitizer |

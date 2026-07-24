@@ -3,7 +3,7 @@
 # Codex/Claude hook shim — fail-open forwarder (macOS/Linux).
 #
 # Reads the provider's hook JSON from stdin, posts a sanitized copy to the
-# Vibe Display server, and exits 0 regardless of outcome. The hook must NEVER
+# Tokenflare server, and exits 0 regardless of outcome. The hook must NEVER
 # block or fail the agent: all I/O is wrapped, with a hard 1s timeout.
 #
 # Usage:  hook-forward.sh <codex|claude> [serverUrl]
@@ -15,7 +15,7 @@
 set -u
 
 PROVIDER="${1:-}"
-SERVER_URL="${2:-${VIBE_SERVER:-http://127.0.0.1:7331}}"
+SERVER_URL="${2:-${TOKENFLARE_SERVER:-http://127.0.0.1:7331}}"
 
 # Bad invocation — but we still exit 0 to never block the agent.
 if [ "$PROVIDER" != "codex" ] && [ "$PROVIDER" != "claude" ]; then

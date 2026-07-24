@@ -1,13 +1,13 @@
 <div align="center">
 
-# 🚦 Vibe Display
+# 🔥 Tokenflare
 
-**Turn a decommissioned Android phone into an always-on status display for Codex & Claude Code.**
+**A visual dashboard for vibe coding with Codex & Claude Code.**
 
-The phone sits on your desk in landscape and shows — at a glance — your task
-status as a traffic light, your Codex 5h/7d quota, your remaining reset
-credits, your Claude Code quota, and more. The PC is the host; the phone is
-the display.
+See your agent's task status at a glance (a glowing traffic light), watch your
+Codex 5h/7d quota and remaining reset credits drain in real time, and track
+your Claude Code usage — all on a dedicated always-on display. Point a browser
+at it, or repurpose an old phone into a desk status panel.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
@@ -34,7 +34,7 @@ the display.
 ## 📸 Screenshots
 
 <!-- TODO: drop a screenshot of the landscape hero+quota layout here once you have a real phone capture. -->
-<!-- <p align="center"><img src="docs/img/screenshot.png" width="720" alt="vibe-display on a phone"></p> -->
+<!-- <p align="center"><img src="docs/img/screenshot.png" width="720" alt="tokenflare on a phone"></p> -->
 
 > _Screenshot coming soon — see the [layout sketch](#-layout) below for the arrangement._
 
@@ -43,8 +43,8 @@ the display.
 ## 🚀 Quickstart (60 seconds)
 
 ```bash
-git clone https://github.com/vibe-display/vibe-display.git
-cd vibe-display
+git clone https://github.com/tokenflare/tokenflare.git
+cd tokenflare
 
 # Windows
 .\install.ps1
@@ -60,7 +60,7 @@ You'll see:
 
 ```
 ┌──────────────────────────────────────────────┐
-│  Vibe Display server is up                    │
+│  Tokenflare server is up                    │
 │  local:   http://127.0.0.1:7331
 │  phone:   http://192.168.1.10:7331            │   ← open this on your phone
 │  ws:      /ws                                 │
@@ -72,7 +72,7 @@ On the phone (same Wi-Fi): open that URL → **Add to Home Screen** → launch
 full-screen in landscape. You're done.
 
 > **No Codex login yet?** The display still works — it shows fallback values
-> from `config/vibe-display.config.json`. Live Codex numbers appear
+> from `config/tokenflare.config.json`. Live Codex numbers appear
 > automatically once you've logged into the Codex CLI (the server reads
 > `~/.codex/auth.json`).
 
@@ -113,7 +113,7 @@ Remove anytime: `unregister-codex-hook.{ps1,sh}` / `unregister-claude-hook.{ps1,
 |  HERO (40%)              |  QUOTA GRID (60%)           |
 |  ● RUNNING               |  Codex 5h   ████░░ 78%      |
 |  Refactoring auth        |  Codex 7d   █████░ 91%      |
-|  vibe-display            |  Resets     2 left          |
+|  tokenflare            |  Resets     2 left          |
 |  04:12                   |  Claude 5h  ██░░░░ 38%      |
 |  12:34  ⚙                |  Claude 7d  ████░░ 67%      |
 +--------------------------+-----------------------------+
@@ -125,7 +125,7 @@ Tap the ⚙ gear to switch theme, font, background, reduced-motion, or server UR
 
 ## ⚙️ Configuration
 
-Edit [`config/vibe-display.config.json`](config/vibe-display.config.json):
+Edit [`config/tokenflare.config.json`](config/tokenflare.config.json):
 
 ```jsonc
 {
@@ -149,8 +149,8 @@ Edit [`config/vibe-display.config.json`](config/vibe-display.config.json):
 }
 ```
 
-Env overrides: `VIBE_HOST`, `VIBE_PORT`, `VIBE_CODEX_POLL`, `VIBE_CONFIG`,
-`VIBE_PWA_DIR`. See [`docs/specs/2026-07-24-vibe-display-design.md`](docs/specs/2026-07-24-vibe-display-design.md)
+Env overrides: `TOKENFLARE_HOST`, `TOKENFLARE_PORT`, `TOKENFLARE_CODEX_POLL`, `TOKENFLARE_CONFIG`,
+`TOKENFLARE_PWA_DIR`. See [`docs/specs/2026-07-24-tokenflare-design.md`](docs/specs/2026-07-24-tokenflare-design.md)
 for the full design.
 
 ---
@@ -191,7 +191,7 @@ npm run test:e2e    # 9 Playwright e2e tests (hook -> server -> WS -> rendered D
 ## 🗺️ How it works
 
 ```
- Codex CLI / Claude Code  ──hook──▶  vibe-display server (PC)  ──WebSocket──▶  PWA (phone)
+ Codex CLI / Claude Code  ──hook──▶  tokenflare server (PC)  ──WebSocket──▶  PWA (phone)
    fires lifecycle hooks            ingests + reduces state             renders traffic light
                                     fetches live Codex quota              + quota cards
 ```
@@ -216,7 +216,7 @@ npm run test:e2e    # 9 Playwright e2e tests (hook -> server -> WS -> rendered D
 - Make sure the phone is on the **same Wi-Fi** as the PC.
 - Check your PC firewall isn't blocking port `7331` (the default).
 - Use the LAN IP from the banner, not `127.0.0.1` (that only works on the PC itself).
-- If the server bound to `127.0.0.1` only, set `VIBE_HOST=0.0.0.0` and restart.
+- If the server bound to `127.0.0.1` only, set `TOKENFLARE_HOST=0.0.0.0` and restart.
 </details>
 
 <details>
@@ -225,7 +225,7 @@ npm run test:e2e    # 9 Playwright e2e tests (hook -> server -> WS -> rendered D
 Another process (often a previous server instance) holds the port. Either stop
 it, or run on a different port:
 ```bash
-VIBE_PORT=7332 npm start
+TOKENFLARE_PORT=7332 npm start
 ```
 </details>
 
@@ -241,7 +241,7 @@ shows fallbacks, check the server console for `[codex] codex wham failed: ...`.
 <summary><b>Claude quota never updates</b></summary>
 
 Anthropic exposes no public usage API equivalent to Codex's `wham`. Claude
-quota comes from `config/vibe-display.config.json` (`claude.fallback`) and is
+quota comes from `config/tokenflare.config.json` (`claude.fallback`) and is
 updated by editing the file or POSTing to `/api/quota/mock`. Claude **task
 status** (the traffic light) still tracks live via hooks.
 </details>
@@ -298,12 +298,12 @@ open an issue to discuss, match the code style, add tests, keep `typecheck` +
 
 ## 📄 License
 
-[MIT](LICENSE) — © vibe-display contributors.
+[MIT](LICENSE) — © tokenflare contributors.
 
 ---
 
 <div align="center">
 
-Made for desks with one too many old phones in the drawer. ⚡
+A glowing panel for your vibe coding sessions. 🔥
 
 </div>

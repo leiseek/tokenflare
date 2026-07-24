@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Remove Vibe Display hooks from Codex CLI's config.toml (reverse of register).
+  Remove Tokenflare hooks from Codex CLI's config.toml (reverse of register).
 #>
 $ErrorActionPreference = "Stop"
 $configPath = Join-Path $env:USERPROFILE ".codex\config.toml"
@@ -12,12 +12,12 @@ if (-not (Test-Path $configPath)) {
 
 $config = Get-Content $configPath -Raw
 $before = $config
-$config = $config -replace "(?s)# >>> vibe-display hooks >>>.*?# <<< vibe-display hooks <<<\r?\n?", ""
-$config = $config -replace "(?s)\[hooks\]\r?\n(?:(?!^\[).)*?(?=^# >>> vibe-display|\Z)", ""
+$config = $config -replace "(?s)# >>> tokenflare hooks >>>.*?# <<< tokenflare hooks <<<\r?\n?", ""
+$config = $config -replace "(?s)\[hooks\]\r?\n(?:(?!^\[).)*?(?=^# >>> tokenflare|\Z)", ""
 
 if ($config.Trim() -ne $before.Trim()) {
   Set-Content -Path $configPath -Value $config -NoNewline:$false -Encoding UTF8
-  Write-Host "Removed Vibe Display hooks from $configPath" -ForegroundColor Green
+  Write-Host "Removed Tokenflare hooks from $configPath" -ForegroundColor Green
 } else {
-  Write-Host "No Vibe Display hooks block found in $configPath — nothing to remove."
+  Write-Host "No Tokenflare hooks block found in $configPath — nothing to remove."
 }

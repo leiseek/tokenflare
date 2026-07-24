@@ -37,7 +37,7 @@ body:
   - type: input
     id: vibe
     attributes:
-      label: vibe-display version
+      label: tokenflare version
       placeholder: "1.0.0"
     validations:
       required: true

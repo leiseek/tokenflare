@@ -1,9 +1,9 @@
 {
-  "name": "@vibe-display/server",
+  "name": "@tokenflare/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Vibe Display host server: hook ingress, quota fetcher, state, REST + WebSocket, PWA host.",
+  "description": "Tokenflare host server: hook ingress, quota fetcher, state, REST + WebSocket, PWA host.",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",

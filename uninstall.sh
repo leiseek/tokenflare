@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# vibe-display uninstaller (macOS/Linux).
+# tokenflare uninstaller (macOS/Linux).
 #
 # Reverses what install.sh did and (optionally) what the hook-registration
 # scripts did. Removes node_modules, dist, and e2e test artifacts. With
@@ -40,7 +40,7 @@ confirm() {
 }
 
 echo ""
-echo "  vibe-display uninstaller"
+echo "  tokenflare uninstaller"
 echo "  ------------------------"
 echo ""
 

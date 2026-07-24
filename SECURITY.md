@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-vibe-display is a single-user, single-desk developer tool. Only the latest
+tokenflare is a single-user, single-desk developer tool. Only the latest
 release receives security fixes.
 
 | Version | Supported          |
@@ -27,7 +27,7 @@ release notes unless they prefer otherwise.
 
 ## Security Design
 
-vibe-display is built with a **fail-open, content-scrubbing** discipline
+tokenflare is built with a **fail-open, content-scrubbing** discipline
 inherited from observe-only agent-monitoring patterns:
 
 - **Edge sanitization.** Hook payloads are reduced to an allow-list

@@ -1,4 +1,4 @@
-# @vibe-display/pwa
+# @tokenflare/pwa
 
 The phone display. **Plain HTML + CSS + vanilla JavaScript — no build step.**
 
@@ -40,7 +40,7 @@ Preferences are stored in `localStorage` on the phone only — nothing is sent t
 |  HERO (40%)              |  QUOTA GRID (60%)           |
 |  ● RUNNING               |  Codex 5h   ████░░ 78%      |
 |  Refactoring auth        |  Codex 7d   █████░ 91%      |
-|  vibe-display            |  Resets     2 left          |
+|  tokenflare            |  Resets     2 left          |
 |  04:12                   |  Claude 5h  ██░░░░ 38%      |
 |  12:34  ⚙                |  Claude 7d  ████░░ 67%      |
 +--------------------------+-----------------------------+
