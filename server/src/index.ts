@@ -39,6 +39,7 @@ function main(): void {
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       console.error(`\n[error] port ${config.server.port} is already in use.`);
+      console.error(`        This usually means a previous Tokenflare instance is still running.`);
       console.error(`        Set TOKENFLARE_PORT (or config.server.port) to a free port, or stop the other process.`);
       console.error(`        Example: TOKENFLARE_PORT=7332 npm start`);
     } else {
