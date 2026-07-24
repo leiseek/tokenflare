@@ -49,8 +49,8 @@ if ($UsePowerShellShim) {
   $command = "node `"$shimPath`" codex $ServerUrl"
 }
 
-# Events we subscribe (pulse-island's curated list).
-$events = @("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop")
+# Events we subscribe (pulse-island's curated list + Notification for WAITING).
+$events = @("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification", "Stop")
 
 # Build the [hooks] block.
 $marker = "# >>> vibe-display hooks >>>"

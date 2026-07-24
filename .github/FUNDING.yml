@@ -1,5 +1,9 @@
-# Settings for the Dependabot config — kept minimal.
-# This file is intentionally a placeholder for sponsorship/funding buttons.
-# Uncomment and edit if you set up sponsorship:
+# Funding / sponsorship buttons for the repo sidebar.
 #
-# github: [your-username]
+# Uncomment ONE of the following and fill in your details to show a
+# "Sponsor" button on the GitHub repo page. Left blank by default.
+#
+# github: [your-github-username]
+# patreon: # your patreon username
+# ko_fi:   # your ko-fi username
+# custom:  # ["https://your-sponsor-url.example"]

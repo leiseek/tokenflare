@@ -14,9 +14,16 @@ release receives security fixes.
 
 If you discover a security vulnerability, **please do not open a public issue**.
 
-Instead, email **vibe-display@example.com** with a description and, if
-possible, a reproduction. We will acknowledge receipt within 48 hours and
-aim to issue a fix within 14 days for confirmed vulnerabilities.
+Use GitHub's private vulnerability reporting: go to the **Security** tab of the
+repository and click **"Report a vulnerability"**. This creates a private,
+advisory-tracked conversation between you and the maintainers.
+
+If you prefer email, contact the maintainers via a DM through the channels
+listed on the maintainer's GitHub profile.
+
+We will acknowledge receipt within **48 hours** and aim to issue a fix within
+**14 days** for confirmed vulnerabilities. Reporters are credited in the
+release notes unless they prefer otherwise.
 
 ## Security Design
 

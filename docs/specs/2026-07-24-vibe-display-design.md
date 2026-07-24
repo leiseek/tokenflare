@@ -1,8 +1,8 @@
 # Vibe Display — Design Spec
 
 **Date:** 2026-07-24
-**Status:** Draft (pending user review)
-**Owner:** user (with ZCode)
+**Status:** Implemented (v1.0.0)
+**Owner:** vibe-display contributors
 
 ## 1. Overview
 
@@ -18,7 +18,7 @@ Turn a decommissioned Android phone into a always-on **vibe coding status indica
 The PC is the **host** (it has the credentials and the editor hooks). The phone is the **display** (PWA open in the browser, added to home screen, full-screen kiosk).
 
 ### Goals
-- Self-contained repo under `D:\Workspace\vibe-display`, split into clear subfolders.
+- Self-contained repo, split into clear subfolders.
 - Works on a desk immediately for self-test with mock data (no credentials required).
 - Real data when Codex OAuth credentials are supplied.
 - Real task status via Codex/Claude provider hooks.
@@ -93,7 +93,7 @@ The PC is the **host** (it has the credentials and the editor hooks). The phone 
 ## 4. Repository layout
 
 ```
-D:\Workspace\vibe-display\
+vibe-display/        (repo root)
 ├─ docs\
 │  └─ specs\
 │     └─ 2026-07-24-vibe-display-design.md      ← this file
@@ -414,7 +414,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 ## 10. Testing strategy
 
-### 10.1 Unit tests (`server/test/*.test.ts`, Vitest)
+### 10.1 Unit tests (`server/test/*.test.ts`, Node built-in `node:test`)
 - `sanitize.test.ts`: allow-list keeps session_id/cwd/event; drops prompt/transcript; rejects objects containing `api_key`/`bearer`/etc.
 - `classify.test.ts`: remaining% → class at boundaries 80/40/10; used% converted correctly; count metric thresholds.
 - `reducer.test.ts`: started→running; activity updates lastActivity; waiting; failed; **terminal protection** (failed not overwritten by stale activity); elapsed math.
@@ -463,7 +463,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 ## 13. Acceptance criteria (definition of done)
 
-- [ ] Repo at `D:\Workspace\vibe-display` with `server/`, `pwa/`, `scripts/`, `e2e/`, `config/`, `docs/`.
+- [ ] Repo with `server/`, `pwa/`, `scripts/`, `e2e/`, `config/`, `docs/`.
 - [ ] `npm install && npm run build` succeeds with zero TS errors in `server/` (strict). The PWA needs no build.
 - [ ] `npm test` — all unit tests green (sanitize, classify, reducer, metrics, format).
 - [ ] `npm run e2e` — Playwright e2e green (hook → DOM, snapshot/delta, reconnect, reduced-motion).

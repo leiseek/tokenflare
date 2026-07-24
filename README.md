@@ -12,7 +12,7 @@ the display.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey.svg)](#platforms)
-[![Tests](https://img.shields.io/badge/tests-50%20unit%20%2B%209%20e2e-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-50%20unit%20%2B%2010%20e2e-brightgreen.svg)](#testing)
 
 </div>
 

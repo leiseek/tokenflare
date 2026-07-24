@@ -48,17 +48,25 @@ function main(): void {
   });
   server.listen(config.server.port, config.server.host, () => {
     const port = config.server.port;
-    const host = config.server.host;
     const lanIps = collectLanIps();
-    console.log("┌──────────────────────────────────────────────┐");
-    console.log("│  Vibe Display server is up                    │");
-    console.log(`│  local:   http://127.0.0.1:${port}              `);
+    // Render a consistent banner box. Every content line is padded to the same
+    // inner width so the right border `│` always lines up. Inner width = 46.
+    const INNER = 46;
+    const line = (content: string) => {
+      // Visible length: content may contain wide chars (none here, but be safe).
+      // Pad with spaces; if content is longer than INNER, it overflows gracefully.
+      const pad = Math.max(0, INNER - content.length);
+      console.log("│  " + content + " ".repeat(pad) + " │");
+    };
+    console.log("┌" + "─".repeat(INNER + 2) + "┐");
+    line("Vibe Display server is up");
+    line("local:   http://127.0.0.1:" + port);
     for (const ip of lanIps.slice(0, 3)) {
-      console.log(`│  phone:   http://${ip}:${port}`.padEnd(48) + "│");
+      line("phone:   http://" + ip + ":" + port);
     }
-    console.log("│  ws:      /ws                                 │");
-    console.log("│  codex:   " + (config.codex.autoReadAuthJson ? "auto-read ~/.codex/auth.json" : "config oauth").padEnd(34) + " │");
-    console.log("└──────────────────────────────────────────────┘");
+    line("ws:      /ws");
+    line("codex:   " + (config.codex.autoReadAuthJson ? "auto-read ~/.codex/auth.json" : "config oauth"));
+    console.log("└" + "─".repeat(INNER + 2) + "┘");
   });
 
   // Graceful shutdown.

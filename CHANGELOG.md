@@ -27,10 +27,10 @@ status indicator for Codex and Claude Code.
 - **Hook registration** (`scripts/`): PowerShell (Windows) + bash (macOS/Linux)
   scripts for Codex CLI and Claude Code, with fail-open forwarder shims (node
   + PowerShell + bash/curl variants). `.gitattributes` forces `.sh` to LF.
-- **Testing**: 50 unit tests (Vitest-style via `node:test`) covering sanitize,
-  classify, reducer, metrics, format, store, codexWham. 9 Playwright e2e tests
-  covering hook → server → WebSocket → rendered DOM, including a regression
-  test that the compiled build serves the PWA.
+- **Testing**: 50 unit tests (Node's built-in test runner, `node:test`) covering
+  sanitize, classify, reducer, metrics, format, store, codexWham. 9 Playwright
+  e2e tests covering hook → server → WebSocket → rendered DOM, including a
+  regression test that the compiled build serves the PWA.
 - **Config** (`config/vibe-display.config.json`): all quota has sensible
   fallbacks so the display works immediately with zero credentials.
 - **Privacy**: hooks keep only an allow-list (`session_id`, `hook_event_name`,

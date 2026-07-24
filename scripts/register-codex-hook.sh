@@ -65,7 +65,7 @@ touch "$CONFIG_PATH"
 CONFIG="$(cat "$CONFIG_PATH" 2>/dev/null || true)"
 
 # Build the managed block. Codex's [hooks] table maps event -> [command].
-EVENTS=(SessionStart UserPromptSubmit PreToolUse PostToolUse Stop)
+EVENTS=(SessionStart UserPromptSubmit PreToolUse PostToolUse Notification Stop)
 
 MARKER="# >>> vibe-display hooks >>>"
 END_MARKER="# <<< vibe-display hooks <<<"

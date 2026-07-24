@@ -215,6 +215,24 @@ test.describe.serial("Vibe Display end-to-end", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "tokyo-night");
   });
 
+  test("font switcher re-points the font stylesheet (regression: was a no-op)", async ({ page }) => {
+    await page.goto(baseUrl);
+    await page.click("#gearBtn");
+    // Default is jetbrains. The <link#fontLink> href must point at a JetBrains URL.
+    const link = page.locator("#fontLink");
+    await expect(link).toHaveAttribute("href", /JetBrains/);
+
+    // Switch to Inter -> href changes to Inter.
+    await page.selectOption("#fontSelect", "inter");
+    await expect(link).toHaveAttribute("href", /Inter/);
+    await expect(page.locator("html")).toHaveAttribute("data-font", "inter");
+
+    // Switch to System -> the Google Fonts sheet is disabled (no external font load).
+    await page.selectOption("#fontSelect", "system");
+    await expect(link).toHaveAttribute("disabled", "");
+    await expect(page.locator("html")).toHaveAttribute("data-font", "system");
+  });
+
   test("secret-bearing hook is rejected with 400", async () => {
     const res = await fetch(`${baseUrl}/api/hooks/codex`, {
       method: "POST", headers: { "Content-Type": "application/json" },
