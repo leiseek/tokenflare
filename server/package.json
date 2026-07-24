@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "test": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\""
+    "test": "node --import tsx --test --test-reporter=spec"
   },
   "dependencies": {
     "ws": "^8.18.0"
