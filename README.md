@@ -14,7 +14,7 @@ at it, or repurpose an old phone into a desk status panel.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey.svg)](#platforms)
-[![Tests](https://img.shields.io/badge/tests-112%20unit%20%2B%2016%20e2e-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-114%20unit%20%2B%2016%20e2e-brightgreen.svg)](#testing)
 
 </div>
 
@@ -196,7 +196,7 @@ for the full design.
 
 ```bash
 npm run typecheck   # strict TypeScript, zero errors
-npm test            # 112 unit tests (hooks, sanitize, reducer, metrics, store, quota, watcher, sweeper)
+npm test            # 114 unit tests (hooks, sanitize, reducer, metrics, store, quota, watcher, sweeper)
 npm run test:e2e    # 16 Playwright e2e tests (hook -> server -> WS -> rendered DOM)
 ```
 

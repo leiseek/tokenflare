@@ -104,7 +104,8 @@ export interface QuotaMetric {
   key: string;
   label: string;
   provider: Exclude<Provider, "manual">;
-  /** Account identity shown above this provider's cards (e.g. "Example User"). */
+  /** Account identity shown above this provider's cards (e.g. "you@example.com").
+   *  Email, never the account holder's name — see CodexAccount. */
   accountName?: string;
   window?: QuotaWindow;
   semantics: QuotaSemantics;

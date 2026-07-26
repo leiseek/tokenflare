@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-26
+
+### Changed
+- **The Codex header shows the account email, not the account holder's name.**
+  The label above the Codex quota cards used to prefer the `name` claim from
+  `~/.codex/auth.json`'s id_token. This display is built to sit in the open on a
+  desk; the email identifies which account the quota belongs to, which is the
+  only thing the header is for, while the name just puts a person's identity on
+  the wall. The `name` claim is no longer decoded at all — it is absent from
+  `CodexAccount`, so it cannot be surfaced by accident later.
+
+  A token carrying only a name now yields no label, and the header falls back
+  to a bare "Codex" rather than displaying it.
+
 ## [2.1.0] - 2026-07-26
 
 ### Added
@@ -175,7 +189,7 @@ red light:
   breakage), it renders as *n/a — not reported*; it fills in automatically once
   the API reports the window again.
 - **Account name headers above each provider's quota cards.** Codex decodes the
-  account `name`/`email` (e.g. "Example User") from the `id_token` in
+  account `email` from the `id_token` in
   `~/.codex/auth.json`; Claude shows "Claude Code" (configurable via
   `claude.accountName`). Each provider's cards are grouped under its label.
 

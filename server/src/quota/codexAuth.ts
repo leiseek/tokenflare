@@ -21,11 +21,17 @@ export interface CodexAuth {
   origin: "authjson" | "config";
 }
 
-/** Account identity decoded from the id_token JWT (for the display header). */
+/**
+ * Account identity decoded from the id_token JWT (for the display header).
+ *
+ * Email only, deliberately. The token also carries the account holder's real
+ * name, and this display is meant to sit on a desk in the open — a name is the
+ * more personally identifying of the two, and it tells you nothing extra about
+ * *which account* the quota belongs to, which is the only thing the header is
+ * for. The claim is not decoded at all, so it cannot be surfaced by accident.
+ */
 export interface CodexAccount {
-  /** Display name, e.g. "Example User". */
-  name?: string;
-  /** Email, e.g. "you@example.com". */
+  /** Email, e.g. "someone@example.com". */
   email?: string;
 }
 
@@ -50,8 +56,8 @@ export function defaultAuthJsonPath(): string {
 }
 
 /**
- * Decode the `name`/`email` claims from an OpenAI id_token (a JWT). The payload
- * is the middle base64url segment. Returns {} if anything is missing/malformed.
+ * Decode the `email` claim from an OpenAI id_token (a JWT). The payload is the
+ * middle base64url segment. Returns {} if anything is missing/malformed.
  */
 export function decodeAccountFromIdToken(idToken: string | null | undefined): CodexAccount {
   if (!idToken || typeof idToken !== "string") return {};
@@ -64,7 +70,7 @@ export function decodeAccountFromIdToken(idToken: string | null | undefined): Co
     const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
     const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
     const out: CodexAccount = {};
-    if (typeof payload.name === "string" && payload.name.trim()) out.name = payload.name.trim();
+    // `payload.name` is intentionally not read — see CodexAccount.
     if (typeof payload.email === "string" && payload.email.trim()) out.email = payload.email.trim();
     return out;
   } catch {
@@ -73,7 +79,7 @@ export function decodeAccountFromIdToken(idToken: string | null | undefined): Co
 }
 
 /**
- * Read the account identity (name/email) from ~/.codex/auth.json's id_token.
+ * Read the account email from ~/.codex/auth.json's id_token.
  * Returns {} if the file or id_token is unavailable. Used purely for the
  * display header — never sent anywhere.
  */

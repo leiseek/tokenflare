@@ -214,7 +214,8 @@ export function createServer(deps: ServerDeps): http.Server {
       const metrics: QuotaMetric[] = [];
       const sources = store.getSources();
       const codexAccount = loadCodexAccount({ autoReadAuthJson: config.codex.autoReadAuthJson, authJsonPath: config.codex.authJsonPath });
-      const codexLabel = codexAccount.name || codexAccount.email;
+      // Email, never the account holder's name — see CodexAccount.
+      const codexLabel = codexAccount.email;
       if (codexIn && typeof codexIn === "object") {
         metrics.push(...buildCodexMetrics(codexIn, "live", codexLabel));
         sources.codex = "live";

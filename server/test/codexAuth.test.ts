@@ -13,18 +13,33 @@ function fakeJwt(payload: Record<string, unknown>): string {
   return `${b64url({ alg: "RS256" })}.${b64url(payload)}.signature`;
 }
 
-test("decodeAccountFromIdToken extracts name + email from the JWT payload", () => {
+test("decodeAccountFromIdToken extracts the email from the JWT payload", () => {
   const acct = decodeAccountFromIdToken(
-    fakeJwt({ email: "you@example.com", name: "Example User", sub: "user-123" }),
+    fakeJwt({ email: "someone@example.com", name: "Real Name", sub: "user-123" }),
   );
-  assert.equal(acct.name, "Example User");
-  assert.equal(acct.email, "you@example.com");
+  assert.equal(acct.email, "someone@example.com");
+});
+
+test("the account holder's name is never decoded", () => {
+  // The display sits in the open on a desk. The email says which account the
+  // quota belongs to; the name only adds a person's identity to the wall. Not
+  // reading the claim at all means it cannot be surfaced by accident later.
+  const acct = decodeAccountFromIdToken(
+    fakeJwt({ email: "someone@example.com", name: "Real Name", sub: "user-123" }),
+  );
+  assert.deepEqual(Object.keys(acct), ["email"]);
+  assert.ok(!JSON.stringify(acct).includes("Real Name"));
 });
 
 test("decodeAccountFromIdToken handles a payload with only email", () => {
   const acct = decodeAccountFromIdToken(fakeJwt({ email: "x@example.com" }));
   assert.equal(acct.email, "x@example.com");
-  assert.equal(acct.name, undefined);
+});
+
+test("a token carrying only a name yields no label at all", () => {
+  // Better to fall back to a bare "Codex" header than to put a name up.
+  const acct = decodeAccountFromIdToken(fakeJwt({ name: "Real Name", sub: "user-123" }));
+  assert.deepEqual(acct, {});
 });
 
 test("decodeAccountFromIdToken returns {} for malformed/missing tokens", () => {

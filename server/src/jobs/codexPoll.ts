@@ -26,10 +26,16 @@ export interface PollCtx {
 
 let timer: NodeJS.Timeout | null = null;
 
-/** A display account name: prefer the human name, fall back to email. */
+/**
+ * The label shown above the Codex cards: the account email.
+ *
+ * Not the account holder's name — the display is meant to sit in the open on a
+ * desk, and the email identifies which account the quota belongs to without
+ * putting someone's real name on the wall. Undefined when no email is
+ * available, in which case the display just says "Codex".
+ */
 function codexAccountLabel(opts: { autoReadAuthJson: boolean; authJsonPath: string | null }): string | undefined {
-  const acct = loadCodexAccount(opts);
-  return acct.name || acct.email || undefined;
+  return loadCodexAccount(opts).email || undefined;
 }
 
 /** Run one poll immediately. Safe to call anytime. */

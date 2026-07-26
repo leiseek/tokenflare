@@ -99,9 +99,9 @@ test("accountName is threaded onto every card", () => {
   const m = buildCodexMetrics(
     { weekly: { remaining: 50 }, resets: { available: 1 } },
     "live",
-    "Example User",
+    "you@example.com",
   );
-  assert.ok(m.every((x) => x.accountName === "Example User"));
+  assert.ok(m.every((x) => x.accountName === "you@example.com"));
   const c = buildClaudeMetrics({ weekly: { remaining: 50 } }, "config", "Claude Code");
   assert.equal(c[0].accountName, "Claude Code");
 });
