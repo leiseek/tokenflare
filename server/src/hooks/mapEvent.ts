@@ -1,21 +1,20 @@
 /**
  * Map a provider hook event name to a provider-neutral EvidenceKind.
  *
- * Ported from pulse-island's codex/claude adapters. Critical rule:
- * Stop / SessionEnd -> "activity", NOT "completed" — the agent finishing a
- * response is not the same as the user's task being done.
+ * UserPromptSubmit starts a new displayed turn, PermissionRequest/Notification
+ * means the agent is waiting, and Stop/SessionEnd completes the displayed turn.
  */
 import type { EvidenceKind } from "../state/types.js";
 
 /** Codex hook event names we recognize. */
 const CODEX_EVENTS: Record<string, EvidenceKind> = {
   SessionStart: "started",
-  UserPromptSubmit: "activity",
+  UserPromptSubmit: "started",
   PreToolUse: "activity",
   PostToolUse: "activity",
-  Notification: "waiting",
-  Stop: "activity",
-  SessionEnd: "activity",
+  PermissionRequest: "waiting",
+  Stop: "completed",
+  SessionEnd: "completed",
   SubagentStart: "activity",
   SubagentStop: "activity",
   PreCompact: "activity",
@@ -24,14 +23,25 @@ const CODEX_EVENTS: Record<string, EvidenceKind> = {
 /** Claude Code hook event names we recognize. */
 const CLAUDE_EVENTS: Record<string, EvidenceKind> = {
   SessionStart: "started",
-  UserPromptSubmit: "activity",
+  UserPromptSubmit: "started",
   PreToolUse: "activity",
   PostToolUse: "activity",
+  PostToolUseFailure: "activity",
+  PostToolBatch: "activity",
+  // The agent is blocked on the user: this is the amber light.
+  PermissionRequest: "waiting",
   Notification: "waiting",
-  Stop: "activity",
+  Elicitation: "waiting",
+  // Denial doesn't end the turn — the agent carries on with the refusal.
+  PermissionDenied: "activity",
+  Stop: "completed",
+  // The turn ended in an error rather than an answer: the red light.
+  StopFailure: "failed",
+  SubagentStart: "activity",
   SubagentStop: "activity",
   PreCompact: "activity",
-  SessionEnd: "activity",
+  PostCompact: "activity",
+  SessionEnd: "completed",
 };
 
 /**

@@ -14,6 +14,8 @@ const CODEX_ALLOW = new Set([
   "hook_event_name",
   "cwd",
   "transcript_path", // used ONLY to derive a label, dropped after basename
+  "narrative",
+  "narrative_phase",
 ]);
 
 /** Keys we KEEP from a raw Claude Code hook payload. */
@@ -22,10 +24,20 @@ const CLAUDE_ALLOW = new Set([
   "hook_event_name",
   "cwd",
   "transcript_path",
+  "narrative",
+  "narrative_phase",
 ]);
 
-/** Substrings that, if found in any key or string value, cause a hard reject. */
-const SECRET_MARKERS = [
+/**
+ * Key names that, if present on the raw payload, cause a hard reject.
+ *
+ * These are matched against KEYS ONLY. Matching them against string *values*
+ * used to be the behaviour, and it silently broke the display: a coding agent
+ * writes the words "password", "authorization" or "credential" in ordinary
+ * prose all the time, and a hit rejected the WHOLE event — including the task's
+ * status transition. A frozen traffic light was the visible symptom.
+ */
+const SECRET_KEY_MARKERS = [
   "api_key",
   "apikey",
   "secret",
@@ -39,6 +51,22 @@ const SECRET_MARKERS = [
   "x-api-key",
 ];
 
+/**
+ * Patterns that identify an actual credential *inside free text*, as opposed to
+ * a word that merely names one. Only these redact the narrative; prose never
+ * does. Kept deliberately narrow — a false positive costs the user a visible
+ * progress line, a false negative would leak a token to the phone.
+ */
+const SECRET_VALUE_PATTERNS: RegExp[] = [
+  /\bsk-[A-Za-z0-9_-]{16,}/, // OpenAI / Anthropic style keys
+  /\bgh[pousr]_[A-Za-z0-9]{16,}/, // GitHub tokens
+  /\bxox[abposr]-[A-Za-z0-9-]{10,}/, // Slack tokens
+  /\bAKIA[0-9A-Z]{16}\b/, // AWS access key id
+  /\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
+  /\b(?:AIza|ya29\.)[A-Za-z0-9_-]{20,}/, // Google API / OAuth
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/, // PEM private key
+];
+
 export type SanitizeResult =
   | {
       ok: true;
@@ -47,34 +75,28 @@ export type SanitizeResult =
         eventName: string | undefined;
         cwd: string | undefined;
         transcriptPath: string | undefined;
+        narrative: string | undefined;
+        narrativePhase: "commentary" | "final";
       };
     }
   | { ok: false; reason: string };
 
-/** Lowercase a value for marker matching without losing the original. */
-function asString(v: unknown): string | null {
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
+/**
+ * Reject if any KEY on the payload names a credential. A hook payload should
+ * never carry such a field; if it does, the sending shim is misconfigured and
+ * we drop the whole thing rather than guess which part is safe.
+ */
+function containsSecretKey(raw: Record<string, unknown>): string | null {
+  for (const key of Object.keys(raw)) {
+    const lk = key.toLowerCase();
+    if (SECRET_KEY_MARKERS.some((m) => lk.includes(m))) return key;
+  }
   return null;
 }
 
-/** Reject if any key or string value contains a secret marker. */
-function containsSecret(raw: Record<string, unknown>): string | null {
-  for (const [key, value] of Object.entries(raw)) {
-    const lk = key.toLowerCase();
-    if (SECRET_MARKERS.some((m) => lk.includes(m))) return key;
-
-    // session_id legitimately contains "id"; it's allow-listed, don't scan its value.
-    if (key === "session_id") continue;
-
-    const s = asString(value);
-    if (s !== null) {
-      const ls = s.toLowerCase();
-      const hit = SECRET_MARKERS.find((m) => ls.includes(m));
-      if (hit) return `${key} (value matched "${hit}")`;
-    }
-  }
-  return null;
+/** True if free text contains something shaped like a real credential. */
+export function looksLikeSecretValue(text: string): boolean {
+  return SECRET_VALUE_PATTERNS.some((re) => re.test(text));
 }
 
 /** Pick allow-listed keys only. */
@@ -121,7 +143,7 @@ export function sanitize(
   }
   const obj = raw as Record<string, unknown>;
 
-  const secretKey = containsSecret(obj);
+  const secretKey = containsSecretKey(obj);
   if (secretKey) {
     // Log the KEY NAME only, never the value.
     return { ok: false, reason: `rejected: secret-like key "${secretKey}"` };
@@ -136,6 +158,15 @@ export function sanitize(
   const cwd = typeof picked.cwd === "string" ? picked.cwd : undefined;
   const transcriptPath =
     typeof picked.transcript_path === "string" ? picked.transcript_path : undefined;
+  let narrative =
+    typeof picked.narrative === "string"
+      ? picked.narrative.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, 2_000)
+      : undefined;
+  // The narrative is free-form assistant prose. Drop it when it carries
+  // something shaped like a real credential — but never reject the event over
+  // it, so the task's status still reaches the display.
+  if (narrative && looksLikeSecretValue(narrative)) narrative = undefined;
+  const narrativePhase = picked.narrative_phase === "final" ? "final" : "commentary";
 
   if (!sessionId && !eventName) {
     return { ok: false, reason: "missing session_id and hook_event_name" };
@@ -148,6 +179,8 @@ export function sanitize(
       eventName,
       cwd,
       transcriptPath,
+      narrative: narrative || undefined,
+      narrativePhase,
     },
   };
 }
