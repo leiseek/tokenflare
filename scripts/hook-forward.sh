@@ -35,6 +35,32 @@ if [ -z "$PAYLOAD" ]; then
   exit 0
 fi
 
+# Sanitize before transmission. If neither jq nor python3 is available, fail
+# open without sending rather than leaking prompt/tool content.
+SAFE_PAYLOAD=""
+if command -v jq >/dev/null 2>&1; then
+  SAFE_PAYLOAD="$(printf '%s' "$PAYLOAD" | jq -c '
+    with_entries(select(.key == "session_id"
+      or .key == "hook_event_name"
+      or .key == "cwd"
+      or .key == "transcript_path"))
+    | with_entries(select(.value | type == "string"))
+  ' 2>/dev/null || true)"
+elif command -v python3 >/dev/null 2>&1; then
+  SAFE_PAYLOAD="$(printf '%s' "$PAYLOAD" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    keys = ("session_id", "hook_event_name", "cwd", "transcript_path")
+    print(json.dumps({k: data[k] for k in keys if isinstance(data.get(k), str)}))
+except Exception:
+    pass
+' 2>/dev/null || true)"
+fi
+if [ -z "$SAFE_PAYLOAD" ]; then
+  exit 0
+fi
+
 # Fire-and-forget POST with a hard 1s timeout. Ignore all errors.
 # curl is always present on macOS (system) and virtually every Linux distro.
 curl -s -o /dev/null \
@@ -42,7 +68,7 @@ curl -s -o /dev/null \
   --connect-timeout 1 \
   -X POST \
   -H "Content-Type: application/json" \
-  -d "$PAYLOAD" \
+  -d "$SAFE_PAYLOAD" \
   "${SERVER_URL}/api/hooks/${PROVIDER}" 2>/dev/null
 
 exit 0

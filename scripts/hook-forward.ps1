@@ -26,12 +26,19 @@ param(
 if (-not $ServerUrl) { $ServerUrl = "http://127.0.0.1:7331" }
 
 try {
-  # Read stdin (the hook payload) with a hard 1s cap via a background job.
+  # Read and sanitize stdin before transmitting anything.
   $raw = $input | Out-String
   if ([string]::IsNullOrWhiteSpace($raw)) { exit 0 }
+  $payload = $raw | ConvertFrom-Json
+  $safe = [ordered]@{}
+  foreach ($key in @("session_id", "hook_event_name", "cwd", "transcript_path")) {
+    $property = $payload.PSObject.Properties[$key]
+    if ($property -and $property.Value -is [string]) { $safe[$key] = $property.Value }
+  }
+  if (-not $safe.Contains("session_id") -and -not $safe.Contains("hook_event_name")) { exit 0 }
 
   $url = "$ServerUrl/api/hooks/$Provider"
-  $body = $raw
+  $body = $safe | ConvertTo-Json -Compress
 
   # Fire and forget with a short timeout; ignore all errors.
   $ErrorActionPreference = "SilentlyContinue"
