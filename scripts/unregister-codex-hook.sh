@@ -1,41 +1,13 @@
 #!/usr/bin/env bash
-#
-# Remove Tokenflare hooks from Codex CLI's config.toml (macOS/Linux).
-# Reverse of register-codex-hook.sh.
-#
+# Remove only Tokenflare's handlers from ~/.codex/hooks.json.
 set -euo pipefail
 
-CONFIG_PATH="${HOME}/.codex/config.toml"
-
-if [ ! -f "$CONFIG_PATH" ]; then
-  echo "No Codex config.toml found at $CONFIG_PATH — nothing to remove."
-  exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "error: Node.js is required to update Codex hooks safely" >&2
+  exit 1
 fi
 
-MARKER="# >>> tokenflare hooks >>>"
-END_MARKER="# <<< tokenflare hooks <<<"
-
-# Remove the managed block (awk). Also drop an orphaned empty [hooks] table
-# left behind if we were the only subscriber.
-BEFORE="$(cat "$CONFIG_PATH")"
-
-AFTER="$(awk -v ms="$MARKER" -v me="$END_MARKER" '
-  $0 ~ ms { inblock=1; next }
-  $0 ~ me { inblock=0; next }
-  !inblock { print }
-' "$CONFIG_PATH")"
-
-# Strip a trailing empty [hooks] table (no keys) if present.
-AFTER="$(printf '%s\n' "$AFTER" | awk '
-  /^\[hooks\][[:space:]]*$/ { saw_hooks=1; hooks_buf=$0"\n"; next }
-  saw_hooks && /^[[:space:]]*[A-Za-z]/ { saw_hooks=0; print hooks_buf; hooks_buf="" }
-  saw_headers && !saw_hooks { }
-  { if (saw_hooks) hooks_buf=hooks_buf$0"\n"; else print }
-')"
-
-if [ "$BEFORE" != "$AFTER" ]; then
-  printf '%s\n' "$AFTER" > "$CONFIG_PATH"
-  echo "Removed Tokenflare hooks from $CONFIG_PATH"
-else
-  echo "No Tokenflare hooks block found in $CONFIG_PATH — nothing to remove."
-fi
+RESULT="$(node "${SCRIPT_DIR}/manage-hooks.mjs" unregister codex)"
+CONFIG_PATH="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).path)' "$RESULT")"
+echo "Removed Tokenflare hooks from $CONFIG_PATH"

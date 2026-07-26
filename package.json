@@ -12,8 +12,11 @@
     "build": "npm run build -w server",
     "start": "npm run start -w server",
     "dev": "npm run dev -w server",
+    "restart": "node scripts/restart.mjs && npm run start",
+    "kill-port": "node scripts/restart.mjs",
     "test": "npm run test -w server",
     "test:e2e": "npm run test -w e2e",
+    "shots": "node e2e/shot.mjs",
     "typecheck": "npm run typecheck -w server"
   },
   "engines": {

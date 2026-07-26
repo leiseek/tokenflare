@@ -8,11 +8,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "kill-port": "node ../scripts/restart.mjs",
+    "prestart": "node ../scripts/restart.mjs",
     "start": "tsx src/index.ts",
+    "predev": "node ../scripts/restart.mjs",
     "dev": "tsx watch src/index.ts",
     "test": "node --import tsx --test --test-reporter=spec"
   },
   "dependencies": {
+    "https-proxy-agent": "^7.0.6",
+    "socks-proxy-agent": "^8.0.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {
