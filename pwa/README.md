@@ -9,12 +9,12 @@ manifest forces **landscape + fullscreen**.
 
 | File | Role |
 |---|---|
-| `index.html` | shell: hero-left, quota-grid-right, settings overlay |
+| `index.html` | shell: status, visible-progress stream, quota grid, settings overlay |
 | `manifest.webmanifest` | landscape, fullscreen, standalone |
 | `sw.js` | service worker — caches the app shell for offline relaunch |
 | `styles/base.css` | neon-dark default tokens + animated background |
 | `styles/themes.css` | 5 color-pack themes (Nord, Tokyo Night, Catppuccin, Gruvbox, Synthwave) |
-| `styles/components.css` | hero, quota cards, glowing bars, settings panel |
+| `styles/components.css` | hero, progress stream, quota cards, glowing bars, settings panel |
 | `js/client.js` | WebSocket client — snapshot/delta + auto-reconnect |
 | `js/render.js` | snapshot/delta → DOM |
 | `js/settings.js` | theme/font/background/motion/server prefs (localStorage) |
@@ -32,16 +32,17 @@ Tap the ⚙ gear (bottom-left of the hero):
 - **Server** — the `ws://` URL (defaults to the page origin).
 
 Preferences are stored in `localStorage` on the phone only — nothing is sent to the server.
+The progress header also remembers whether Codex or Claude Code is selected;
+the stream renders only that provider while retaining both histories.
 
 ## Layout
 
 ```
-+--------------------------+-----------------------------+
-|  HERO (40%)              |  QUOTA GRID (60%)           |
-|  ● RUNNING               |  Codex 5h   ████░░ 78%      |
-|  Refactoring auth        |  Codex 7d   █████░ 91%      |
-|  tokenflare            |  Resets     2 left          |
-|  04:12                   |  Claude 5h  ██░░░░ 38%      |
-|  12:34  ⚙                |  Claude 7d  ████░░ 67%      |
-+--------------------------+-----------------------------+
++------------------+---------------------------+----------------------+
+| STATUS           | PROGRESS · TOOLS HIDDEN   | QUOTA                |
+| ● RUNNING        | Checking the real Codex   | Codex 5h       78%   |
+| tokenflare       | hook mapping and client   | Codex 7d       91%   |
+| 04:12            | registration…             | Resets       2 left  |
+| 12:34  ⚙         |                           | Claude 5h      38%   |
++------------------+---------------------------+----------------------+
 ```

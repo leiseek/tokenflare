@@ -20,10 +20,32 @@ export interface TaskState {
   label: string;
 }
 
+export interface TaskInstance {
+  id: string;
+  taskId: string;
+  provider: Provider;
+  cwdLabel: string;
+  status: TaskStatus;
+  startedAt: number | null;
+  lastActivityAt: number | null;
+  label: string;
+  lastNarrative?: NarrativeEntry | null;
+}
+
+export interface NarrativeEntry {
+  id: string;
+  instanceId: string;
+  provider: Exclude<Provider, "manual">;
+  phase: "commentary" | "final";
+  text: string;
+  occurredAt: number;
+}
+
 export interface QuotaMetric {
   key: string;
   label: string;
   provider: Exclude<Provider, "manual">;
+  accountName?: string;
   window?: QuotaWindow;
   semantics: QuotaSemantics;
   percentage: number;
@@ -38,14 +60,18 @@ export interface QuotaMetric {
 export interface Snapshot {
   revision: number;
   serverTime: number;
+  tasks: TaskInstance[];
   task: TaskState | null;
+  narrative: NarrativeEntry[];
   metrics: QuotaMetric[];
   source: { codex: QuotaSource; claude: QuotaSource };
 }
 
 export interface SnapshotDelta {
   revision: number;
+  tasks?: TaskInstance[];
   task?: TaskState | null;
+  narrative?: NarrativeEntry[];
   metrics?: QuotaMetric[];
   source?: { codex: QuotaSource; claude: QuotaSource };
 }

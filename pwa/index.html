@@ -10,9 +10,17 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <title>Tokenflare</title>
+  <!--
+    Web fonts are a progressive enhancement, never a dependency. This display is
+    meant to run on a LAN — often with no route to the internet at all — so the
+    sheet is loaded non-blockingly (media="print" until it arrives). If it never
+    does, the local stacks in base.css render immediately instead of the page
+    waiting on a DNS timeout. Pick "System" in Settings to skip it entirely.
+  -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link id="fontLink" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link id="fontLink" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'" />
   <link rel="stylesheet" href="./styles/base.css" />
   <link rel="stylesheet" href="./styles/themes.css" />
   <link rel="stylesheet" href="./styles/components.css" />
@@ -26,15 +34,15 @@
   </div>
 
   <main class="stage" id="stage">
-    <!-- HERO (left ~40%) -->
-    <section class="hero" aria-label="Task status">
-      <div class="hero-top">
-        <span class="dot" id="statusDot" data-status="idle"></span>
-        <span class="status-word" id="statusWord">IDLE</span>
+    <!-- INSTANCE LIST (left rail): one card per tool/session -->
+    <section class="instance-panel" aria-label="Active sessions">
+      <div class="instance-head">
+        <span class="instance-head-title">SESSIONS</span>
+        <span class="instance-count" id="instanceCount">0</span>
       </div>
-      <div class="hero-task" id="taskLabel" title="">waiting for a task…</div>
-      <div class="hero-cwd" id="taskCwd"></div>
-      <div class="hero-elapsed" id="taskElapsed">00:00</div>
+      <div class="instance-list" id="instanceList" role="list">
+        <div class="instance-empty">no active sessions</div>
+      </div>
       <div class="hero-bottom">
         <span class="clock" id="clock">--:--</span>
         <button class="gear" id="gearBtn" type="button" aria-label="Settings">⚙</button>
@@ -42,7 +50,28 @@
       </div>
     </section>
 
-    <!-- QUOTA GRID (right ~60%) -->
+    <!-- VISIBLE ASSISTANT PROGRESS (tool calls and hidden reasoning excluded) -->
+    <section class="narrative-panel" aria-label="Visible assistant progress">
+      <div class="narrative-head">
+        <div class="active-detail" id="activeDetail">
+          <span class="dot" id="statusDot" data-status="idle"></span>
+          <div class="active-detail-text">
+            <span class="status-word" id="statusWord">IDLE</span>
+            <span class="active-label" id="taskLabel" title="">waiting for a task…</span>
+          </div>
+          <span class="hero-elapsed" id="taskElapsed">00:00</span>
+        </div>
+        <div class="narrative-title">
+          <span>PROGRESS</span>
+          <span class="narrative-privacy">TOOLS HIDDEN</span>
+        </div>
+      </div>
+      <div class="narrative-stream" id="narrativeStream" aria-live="polite">
+        <div class="narrative-empty">waiting for visible progress…</div>
+      </div>
+    </section>
+
+    <!-- QUOTA GRID -->
     <section class="quota-grid" id="quotaGrid" aria-label="Quota cards">
       <!-- cards rendered by render.js -->
     </section>

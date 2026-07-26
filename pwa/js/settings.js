@@ -18,6 +18,8 @@ const DEFAULT_PREFS = {
   font: "jetbrains",
   background: "mesh",
   reducedMotion: false,
+  // Pinned session in the left rail (null = follow most-active). Restored on reload.
+  activeInstanceId: null,
   serverUrl: null, // derived from origin if null
 };
 
@@ -60,9 +62,13 @@ export function applyPrefs(prefs) {
     if (href) {
       if (link.getAttribute("href") !== href) link.setAttribute("href", href);
       link.disabled = false;
+      // index.html ships the sheet as media="print" so it can't block first
+      // paint; promote it now that we know the user wants a web font.
+      link.media = "all";
     } else {
-      // System font: disable the Google Fonts sheet entirely.
+      // System font: no network request at all.
       link.disabled = true;
+      link.media = "print";
     }
   }
 }

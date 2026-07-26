@@ -1,7 +1,7 @@
 /* Tokenflare — component styles.
  *
- * The landscape stage: hero-left (status dot + task + clock), quota-grid-right
- * (5 metric cards with glowing bars). Ported from cockpit-tools'
+ * The landscape stage: status, visible assistant progress, and quota grid.
+ * Ported from cockpit-tools'
  * FloatingCardWindow render loop + glowing progress bar CSS.
  */
 
@@ -9,12 +9,289 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: var(--hero-w) 1fr;
+  grid-template-columns: minmax(190px, var(--hero-w)) minmax(240px, 1fr) minmax(220px, 32%);
   gap: var(--pad);
   width: 100%;
   height: 100%;
   padding: var(--pad);
   align-items: stretch;
+}
+
+/* ---------------- INSTANCE LIST (left rail) ---------------- */
+.instance-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(12px, 2.4vmin, 20px);
+  background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.instance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: clamp(9px, 1.8vmin, 14px);
+  margin-bottom: clamp(9px, 1.8vmin, 14px);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-size: clamp(10px, 1.8vmin, 13px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.instance-head-title { letter-spacing: 0.12em; }
+.instance-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  color: var(--fg-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.instance-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2vmin, 10px);
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Two columns, not three. The elapsed timer used to sit in its own trailing
+ * column and squeezed the label into "tokenfla…" / "keeply-r…" on a narrow
+ * rail — truncating the one thing that identifies the session. It now shares
+ * the sub-line, where it costs nothing: the label gets the full width. */
+.instance-card {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: clamp(9px, 1.8vmin, 15px) clamp(10px, 2vmin, 16px);
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.006));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.instance-card:hover { border-color: var(--fg-dim); background: rgba(255,255,255,0.05); }
+.instance-card:focus-visible { outline: 2px solid var(--state-completed); outline-offset: 1px; }
+.instance-card.is-active {
+  border-color: rgba(105,158,255,0.5);
+  background: rgba(105,158,255,0.1);
+  box-shadow: 0 0 0 1px rgba(105,158,255,0.25), 0 0 18px rgba(105,158,255,0.12);
+}
+
+.instance-dot {
+  width: clamp(11px, 2.2vh, 18px);
+  height: clamp(11px, 2.2vh, 18px);
+  border-radius: 50%;
+  background: var(--state-idle);
+  box-shadow: 0 0 8px var(--state-idle);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.instance-dot[data-status="running"]   { background: var(--state-running);   box-shadow: 0 0 8px var(--state-running); }
+.instance-dot[data-status="waiting"]   { background: var(--state-waiting);   box-shadow: 0 0 8px var(--state-waiting); }
+.instance-dot[data-status="failed"]    { background: var(--state-failed);    box-shadow: 0 0 10px var(--state-failed); }
+.instance-dot[data-status="completed"] { background: var(--state-completed); box-shadow: 0 0 8px var(--state-completed); }
+.instance-dot[data-status="observed"]  { background: var(--state-observed);  box-shadow: 0 0 6px var(--state-observed); }
+.instance-dot[data-status="idle"]      { animation: none; }
+
+.instance-main { min-width: 0; }
+.instance-label {
+  font-size: clamp(13px, 2.9vh, 22px);
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.instance-sub {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: clamp(9px, 1.8vh, 13px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+}
+/* The status word never shrinks or truncates — it is the reason for the panel. */
+.instance-status { white-space: nowrap; flex: 0 0 auto; }
+.instance-elapsed {
+  font-weight: 500;
+  color: var(--fg-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+/* On a narrow rail the timer and the status word cannot both fit. Half a
+   timestamp ("00:") is worse than none, and the active session's elapsed time
+   is already shown full-size in the panel header, so the timer drops out. */
+@container (max-width: 215px) {
+  .instance-elapsed { display: none; }
+}
+
+.instance-empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--fg-faint);
+  font-size: clamp(11px, 2vmin, 14px);
+  text-align: center;
+}
+
+/* ---------------- VISIBLE PROGRESS ---------------- */
+.narrative-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(155deg, rgba(255,255,255,0.028), rgba(255,255,255,0.006));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.narrative-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
+  padding: clamp(12px, 2.2vmin, 18px) clamp(13px, 2.3vmin, 20px);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-size: clamp(10px, 1.8vmin, 13px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* Active instance status bar above the progress stream. */
+.active-detail {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+.active-detail .dot {
+  width: clamp(18px, 4.2vh, 36px);
+  height: clamp(18px, 4.2vh, 36px);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.active-detail .dot[data-status="idle"] { animation: none; }
+.active-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.active-detail-text .status-word {
+  font-size: clamp(16px, 4.4vh, 38px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  text-transform: uppercase;
+}
+.active-label {
+  font-size: clamp(11px, 2.6vh, 20px);
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.active-detail .hero-elapsed {
+  font-size: clamp(17px, 3.6vh, 30px);
+  margin-top: 0;
+}
+
+.narrative-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.narrative-privacy {
+  color: var(--fg-faint);
+  font-size: 0.78em;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* A single short update in a tall panel used to sit pinned to the top with a
+ * screenful of nothing under it. Centring it turns that void into breathing
+ * room around the content instead of dead space below it. A long update still
+ * fills from the top and scrolls, because `safe` disables the centring rather
+ * than letting overflow spill past the scrollable edge. */
+.narrative-stream {
+  flex: 1;
+  display: grid;
+  align-content: safe center;
+  min-height: 0;
+  overflow: auto;
+  padding: clamp(12px, 2.6vh, 32px) clamp(14px, 2.6vh, 36px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.narrative-entry {
+  padding: 0;
+  margin: 0;
+  opacity: 1;
+}
+
+/* Provider and phase belong to the text below them, so they sit together at
+   its left edge. Spread apart across the panel they read as a second header
+   floating in the middle of the column, detached from what they label. */
+.narrative-meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: clamp(6px, 1.2vh, 12px);
+  color: var(--state-completed);
+  font-size: clamp(9px, 1.7vh, 12px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.narrative-meta > :last-child { color: var(--fg-faint); }
+
+.narrative-text {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 3vh, 26px);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.narrative-empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--fg-faint);
+  font-size: clamp(11px, 2vmin, 14px);
+  text-align: center;
 }
 
 /* ---------------- HERO ---------------- */
@@ -94,7 +371,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: clamp(10px, 2vmin, 16px);
 }
 .clock {
   font-size: clamp(13px, 3vmin, 22px);
@@ -124,21 +402,101 @@
 .conn-badge[data-conn="connecting"] { background: var(--state-waiting); box-shadow: 0 0 6px var(--state-waiting); animation: pulse-dot 1s infinite; }
 
 /* ---------------- QUOTA GRID ---------------- */
+/* The quota column is a single grid over BOTH providers, so every card and
+ * header shares one vertical budget. Two things follow, and both matter:
+ *
+ *  - Nothing clips. On a 360px-tall phone the five cards + two headers used to
+ *    overflow and the last card was cut off the bottom edge.
+ *  - Nothing floats. On a tall display the cards stretch to fill the column
+ *    instead of huddling at the top over a screen of dead space — which is
+ *    also what makes the numbers big enough to read from across the room.
+ *
+ * `grid-auto-rows: minmax(0, 1fr)` does the work: rows share leftover space
+ * equally and are allowed to shrink below their content box, and the cards
+ * below use container queries to shed detail as they get short.
+ */
 .quota-grid {
-  display: grid;
-  grid-auto-rows: 1fr;
-  gap: clamp(8px, 1.6vmin, 14px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.4vh, 14px);
   min-height: 0;
+  padding: clamp(10px, 2vh, 18px);
+  background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+/* A provider section: account-name header + its cards (or a "not connected" note).
+ * The header is content-sized; the cards absorb the remaining height. */
+/* `--rows` is the provider's card count, set by render.js. Growing in
+ * proportion to it keeps every card the same height across both providers,
+ * rather than giving a 2-card provider as much room as a 3-card one. */
+.quota-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(5px, 1vh, 10px);
+  flex: var(--rows, 2) 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+.quota-section-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 2px;
+}
+.quota-section-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: clamp(9px, 1.6vmin, 11px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
+}
+.quota-section-tag.provider-codex { color: var(--state-completed); border-color: rgba(105,158,255,0.3); }
+.quota-section-tag.provider-claude { color: var(--state-running); border-color: rgba(73,201,128,0.3); }
+.quota-section-name {
+  font-size: clamp(11px, 2.3vh, 18px);
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quota-section-cards {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: clamp(5px, 1.2vh, 12px);
+  min-height: 0;
+}
+.quota-section-empty {
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 3vmin, 24px);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--fg-faint);
+  font-size: clamp(11px, 2vmin, 14px);
+  text-align: center;
 }
 
 .quota-card {
+  container-type: size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
+  align-content: center;
   align-items: center;
   column-gap: 12px;
   row-gap: 2px;
-  padding: clamp(8px, 1.8vmin, 16px) clamp(12px, 2.4vmin, 22px);
+  min-height: 0;
+  padding: clamp(6px, 1.4vh, 16px) clamp(10px, 2vh, 22px);
   background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008));
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -146,7 +504,7 @@
 }
 
 .quota-label {
-  font-size: clamp(11px, 2.4vmin, 16px);
+  font-size: clamp(10px, 2.4vh, 18px);
   color: var(--fg-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -157,7 +515,7 @@
   text-overflow: ellipsis;
 }
 .quota-reset {
-  font-size: clamp(9px, 1.9vmin, 13px);
+  font-size: clamp(9px, 1.8vh, 14px);
   color: var(--fg-faint);
   grid-column: 1;
   grid-row: 2;
@@ -168,7 +526,7 @@
 .quota-value {
   grid-column: 2;
   grid-row: 1 / span 2;
-  font-size: clamp(18px, 4.2vmin, 32px);
+  font-size: clamp(18px, 5.2vh, 40px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   align-self: center;
@@ -179,6 +537,36 @@
 .quota-value.medium   { color: var(--quota-medium);   text-shadow: var(--glow-soft) rgba(255,184,77,0.5); }
 .quota-value.low      { color: var(--quota-low);      text-shadow: var(--glow-soft) rgba(249,115,22,0.5); }
 .quota-value.critical { color: var(--quota-critical); text-shadow: var(--glow-strong) rgba(255,95,103,0.6); }
+
+/* A window the provider did not report. Muted, un-glowing, and deliberately
+   given LESS room than a live reading: an absence should not out-shout the
+   numbers next to it, and on a short screen that reclaimed height is what
+   keeps the real cards from being squeezed. */
+.quota-value.is-missing {
+  color: var(--fg-faint);
+  font-weight: 500;
+  font-size: clamp(13px, 2.6vh, 20px);
+  text-shadow: none;
+}
+.quota-card[data-state="missing"] {
+  flex: 0 0 auto;
+  border-style: dashed;
+  background: none;
+  padding-top: clamp(4px, 0.9vh, 10px);
+  padding-bottom: clamp(4px, 0.9vh, 10px);
+}
+.quota-card[data-state="missing"] .quota-label { color: var(--fg-faint); }
+/* No bar for a value that doesn't exist — an empty track reads as "0%". */
+.quota-card[data-state="missing"] .quota-bar { display: none; }
+
+/* When a card gets genuinely short there is no room for both the reset hint
+   and a legible value; the number is what people read from a distance, so the
+   hint is what goes. Threshold set just under the height at which label+hint
+   stop fitting, so the hint survives on a 360px-tall phone. */
+@container (max-height: 34px) {
+  .quota-reset { display: none; }
+  .quota-card { row-gap: 0; }
+}
 
 /* The glow bar sits at the bottom edge of the card, full width. */
 .quota-card.with-bar { padding-bottom: 0; }
@@ -285,7 +673,18 @@
 
 /* Small screens / portrait nudge: still usable but optimized for landscape. */
 @media (orientation: portrait) {
-  .stage { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .hero { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-  .hero-elapsed { margin-top: 0; }
+  .stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(180px, 0.8fr) minmax(300px, 1.2fr);
+    overflow: auto;
+  }
+  /* Portrait: the session list becomes a compact horizontal scroller on top. */
+  .instance-panel { padding: clamp(10px, 2vmin, 16px); }
+  .instance-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+  }
+  .instance-card { min-width: 190px; flex-shrink: 0; }
 }

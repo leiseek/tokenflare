@@ -5,27 +5,49 @@
  * and the elapsed/clock tickers always have fresh state to render.
  */
 import { VibeClient } from "./client.js";
-import { renderConnState, renderDelta, renderElapsed, renderClock, renderSnapshot } from "./render.js";
+import { renderConnState, renderDelta, renderElapsed, renderClock, renderSnapshot, setActiveInstance } from "./render.js";
 import { applyPrefs, defaultServerUrl, loadPrefs, savePrefs } from "./settings.js";
 
 // ---- Local snapshot state (deltas applied on top of this) ----
 let current = {
+  tasks: [],
   task: null,
+  narrative: [],
   metrics: [],
 };
 
+/** Persist the selected instance + restore it if still present. */
+function pinActiveInstance(id) {
+  savePrefs({ ...loadPrefs(), activeInstanceId: id });
+  setActiveInstance(id);
+}
+
 function applySnapshot(snap) {
+  current.tasks = snap.tasks ?? (snap.task ? [snap.task] : []);
   current.task = snap.task ?? null;
+  current.narrative = snap.narrative ?? [];
   current.metrics = snap.metrics ?? current.metrics;
   renderSnapshot(snap);
-  renderElapsed(current.task);
+  restorePinnedInstance();
+  renderElapsed();
 }
 
 function applyDelta(delta) {
+  if (delta.tasks !== undefined) current.tasks = delta.tasks;
   if (delta.task !== undefined) current.task = delta.task;
+  if (delta.narrative !== undefined) current.narrative = delta.narrative;
   if (delta.metrics !== undefined) current.metrics = delta.metrics;
   renderDelta(delta);
-  renderElapsed(current.task);
+  restorePinnedInstance();
+  renderElapsed();
+}
+
+/** Re-apply the user's pinned instance after a data refresh (if it still exists). */
+function restorePinnedInstance() {
+  const pinned = loadPrefs().activeInstanceId;
+  if (pinned && current.tasks.some((t) => t.id === pinned)) {
+    setActiveInstance(pinned);
+  }
 }
 
 // ---- Boot ----
@@ -45,10 +67,16 @@ function boot() {
   // 1s ticker: refresh elapsed + wall clock (cheap; DOM only updates if changed).
   setInterval(() => {
     const now = Date.now();
-    renderElapsed(current.task, now);
+    renderElapsed(now);
     renderClock(now);
   }, 1000);
   renderClock();
+
+  // Instance selection: delegate clicks on the session list.
+  document.getElementById("instanceList")?.addEventListener("click", (e) => {
+    const card = e.target.closest(".instance-card");
+    if (card?.dataset.id) pinActiveInstance(card.dataset.id);
+  });
 
   // ---- Settings UI wiring ----
   wireSettings(client, prefs);
@@ -87,7 +115,7 @@ function wireSettings(client, prefs) {
   });
 
   function commit(patch) {
-    const next = { ...prefs, ...patch };
+    const next = { ...loadPrefs(), ...patch };
     prefs = next;
     savePrefs(next);
     applyPrefs(next);

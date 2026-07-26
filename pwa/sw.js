@@ -3,7 +3,7 @@
  * display even if the server is briefly unreachable. Network data (WS, /api/*)
  * is never cached — only the static assets.
  */
-const CACHE = "tokenflare-shell-v1";
+const CACHE = "tokenflare-shell-v3";
 const SHELL = [
   "./",
   "./index.html",
