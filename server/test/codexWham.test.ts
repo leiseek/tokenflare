@@ -104,3 +104,74 @@ test("fetchCodexUsage normalizes 0..1 remaining to 0..100", async () => {
   assert.equal(result.ok, true);
   assert.equal(result.data!.fiveHour?.remaining, 78);
 });
+
+test("fetchCodexUsage parses current rate_limit windows by duration", async () => {
+  const result = await fetchCodexUsage({
+    autoReadAuthJson: false,
+    authJsonPath: null,
+    configOauth: { accessToken: "tok" },
+    fetchImpl: fakeFetch({
+      "/usage": {
+        json: {
+          rate_limit: {
+            primary_window: {
+              used_percent: 57,
+              limit_window_seconds: 604800,
+              reset_at: 1785424812,
+            },
+            secondary_window: {
+              used_percent: 18,
+              limit_window_seconds: 18000,
+              reset_at: 1784823612,
+            },
+          },
+          rate_limit_reset_credits: {
+            available_count: 4,
+            applicable_available_count: 1,
+          },
+        },
+      },
+      "/rate-limit-reset-credits": { json: {} },
+    }),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data!.fiveHour?.remaining, 82);
+  assert.equal(result.data!.weekly?.remaining, 43);
+  assert.equal(result.data!.weekly?.resetAt, 1785424812000);
+  // `available_count` is what the account HOLDS; `applicable_available_count`
+  // is only non-zero while you are actually rate-limited, so reading it showed
+  // "none left" for a healthy account.
+  assert.equal(result.data!.resets?.available, 4);
+});
+
+test("reset credits: count comes from /usage, expiry from the credits list", async () => {
+  const result = await fetchCodexUsage({
+    autoReadAuthJson: false,
+    authJsonPath: null,
+    configOauth: { accessToken: "tok" },
+    fetchImpl: fakeFetch({
+      "/usage": {
+        json: {
+          rate_limit: { primary_window: { used_percent: 6, limit_window_seconds: 604800 } },
+          rate_limit_reset_credits: { available_count: 3, applicable_available_count: 0 },
+        },
+      },
+      "/rate-limit-reset-credits": {
+        json: {
+          credits: [
+            { status: "available", expires_at: "2026-08-12T18:00:41.290796Z" },
+            { status: "available", expires_at: "2026-07-27T00:00:47.338246Z" },
+            { status: "redeemed", expires_at: "2026-07-01T00:00:00.000Z" },
+          ],
+          available_count: 3,
+        },
+      },
+    }),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data!.resets?.available, 3);
+  // Soonest expiry among the still-available credits (the redeemed one is skipped).
+  assert.equal(result.data!.resets?.nextExpiresAt, Date.parse("2026-07-27T00:00:47.338246Z"));
+});

@@ -15,8 +15,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local config overrides (keep the example checked in)
-config/vibe-display.config.local.json
+# Machine-specific config (the installer writes your proxy here).
+# The checked-in template is config/tokenflare.config.example.json.
+config/tokenflare.config.json
+config/*.config.local.json
+
+# Agent scratch dirs
+.zcode/
 
 # Playwright
 e2e/test-results/

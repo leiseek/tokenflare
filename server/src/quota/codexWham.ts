@@ -113,77 +113,168 @@ async function fetchWhamJson(
 }
 
 /**
- * Parse the wham usage + reset-credits payloads into our CodexQuotaInput.
+ * Parse the wham usage payload into our CodexQuotaInput.
  *
- * The wham usage shape is roughly:
- *   { "usage_windows": [ { "window_kind":"primary"|"secondary", "started_at":..,
- *       "resets_at":.., "limit":.., "used":.., "remaining_percent":.. }, ... ] }
- * We read whichever window reports a "primary" kind as the 5h window, and
- * "secondary" (weekly) as the 7d window. We're defensive: any missing field
- * just omits that metric.
+ * The REAL wham /usage shape (verified against a live Codex CLI account) is:
+ *   {
+ *     "rate_limit": {
+ *       "allowed": true,
+ *       "primary_window":  { "used_percent": 55, "limit_window_seconds": 604800,
+ *                            "reset_after_seconds": 567428, "reset_at": 1785424812 },
+ *       "secondary_window": null | { ...same shape... }
+ *     },
+ *     "rate_limit_reset_credits": { "available_count": 4, "applicable_available_count": 0 }
+ *   }
+ *
+ * Notes:
+ *  - `primary_window` is typically the 7-day window (limit_window_seconds=604800).
+ *    `secondary_window` (when present) is the 5-hour window.
+ *  - Fields are `used_percent` (0..100, USED not remaining) — we convert to remaining.
+ *  - `reset_at` is a Unix timestamp in SECONDS (not ms).
+ *  - Reset credits live in the SAME /usage response, no separate request needed.
+ *
+ * We keep defensive fallbacks for the older `usage_windows[]` shape too.
  */
 function parseUsagePayload(usage: unknown, resets: unknown): CodexQuotaInput {
   const input: CodexQuotaInput = {};
+  if (!usage || typeof usage !== "object") return input;
+  const u = usage as Record<string, unknown>;
 
-  if (usage && typeof usage === "object") {
-    const u = usage as Record<string, unknown>;
-    const windows = Array.isArray(u.usage_windows) ? u.usage_windows : Array.isArray(u.windows) ? u.windows : [];
-    for (const w of windows) {
-      if (!w || typeof w !== "object") continue;
-      const win = w as Record<string, unknown>;
-      const kind = String(win.window_kind ?? win.kind ?? "");
-      const remaining = readPercent(win.remaining_percent ?? win.percent_remaining ?? win.remaining);
-      const resetsAt = win.resets_at ?? win.reset_at ?? win.resetAt ?? null;
-      if (kind === "primary") {
-        input.fiveHour = { remaining, resetAt: resetsAt as number | string | null };
-      } else if (kind === "secondary") {
-        input.weekly = { remaining, resetAt: resetsAt as number | string | null };
-      }
+  // ---- New shape: rate_limit.{primary,secondary}_window ----
+  const rl = u.rate_limit;
+  if (rl && typeof rl === "object") {
+    const r = rl as Record<string, unknown>;
+    const pw = r.primary_window;
+    const sw = r.secondary_window;
+    if (pw && typeof pw === "object") {
+      const win = parseWindow(pw as Record<string, unknown>);
+      if (win) assignWindow(input, win, "primary", false);
     }
-    // Some payloads also expose top-level fields as a fallback.
-    if (!input.fiveHour && u.primary_remaining_percent !== undefined) {
-      input.fiveHour = {
-        remaining: readPercent(u.primary_remaining_percent),
-        resetAt: (u.primary_resets_at ?? null) as number | string | null,
-      };
+    if (sw && typeof sw === "object") {
+      const win = parseWindow(sw as Record<string, unknown>);
+      if (win) assignWindow(input, win, "secondary", false);
     }
   }
 
+  // ---- Reset credits (in the usage response) ----
+  //
+  // Prefer `available_count`: that is how many reset credits the account still
+  // holds, which is what the card claims to show. `applicable_available_count`
+  // is how many can be redeemed *right now* and is 0 whenever you are not
+  // currently rate-limited — reading it made a healthy account with 3 credits
+  // display "none left" in red.
+  const rrc = u.rate_limit_reset_credits;
+  if (rrc && typeof rrc === "object") {
+    const c = rrc as Record<string, unknown>;
+    const available =
+      typeof c.available_count === "number"
+        ? c.available_count
+        : typeof c.applicable_available_count === "number"
+          ? c.applicable_available_count
+          : 0;
+    input.resets = { available, nextExpiresAt: null };
+  }
+
+  // ---- Legacy fallback: usage_windows[] array (older API shape) ----
+  if (!input.fiveHour && !input.weekly) {
+    const windows = Array.isArray(u.usage_windows) ? u.usage_windows : Array.isArray(u.windows) ? u.windows : [];
+    for (const w of windows) {
+      if (!w || typeof w !== "object") continue;
+      const win = parseWindow(w as Record<string, unknown>);
+      if (!win) continue;
+      const kind = String((w as Record<string, unknown>).window_kind ?? (w as Record<string, unknown>).kind ?? "");
+      assignWindow(input, win, kind, true);
+    }
+  }
+
+  // ---- /rate-limit-reset-credits: the per-credit list ----
+  //
+  // This is where expiry dates live — the usage payload only carries counts.
+  // We always merge it in (not just as a fallback) so the Resets card can say
+  // when the next credit lapses; the count from /usage wins when both exist.
   if (resets && typeof resets === "object") {
     const r = resets as Record<string, unknown>;
-    const arr = Array.isArray(r.reset_credits) ? r.reset_credits : Array.isArray(r.credits) ? r.credits : null;
+    const credits = Array.isArray(r.reset_credits)
+      ? r.reset_credits
+      : Array.isArray(r.credits)
+        ? r.credits
+        : [];
     let available = 0;
-    let nextExpiresMs: number | null = null;
-    if (arr) {
-      for (const c of arr) {
-        if (!c || typeof c !== "object") continue;
-        const cr = c as Record<string, unknown>;
-        const status = String(cr.status ?? cr.raw_status ?? "").toLowerCase();
-        const isAvailable = status === "" || status === "available" || status === "active";
-        if (!isAvailable) continue;
-        available += 1;
-        const exp = cr.expires_at ?? cr.expiresAt ?? null;
-        const expMs = toMs(exp);
-        if (expMs !== null && (nextExpiresMs === null || expMs < nextExpiresMs)) {
-          nextExpiresMs = expMs;
-        }
+    let nextExpiresAt: number | null = null;
+    for (const credit of credits) {
+      if (!credit || typeof credit !== "object") continue;
+      const c = credit as Record<string, unknown>;
+      const status = String(c.status ?? c.raw_status ?? "").toLowerCase();
+      if (status && status !== "available" && status !== "active") continue;
+      available += 1;
+      const expiresAt = toMs(c.expires_at ?? c.expiresAt ?? null);
+      if (expiresAt !== null && (nextExpiresAt === null || expiresAt < nextExpiresAt)) {
+        nextExpiresAt = expiresAt;
       }
-    } else if (typeof r.reset_credits_available === "number") {
-      available = r.reset_credits_available;
-      nextExpiresMs = toMs(r.reset_credits_next_expires_at ?? null);
     }
-    input.resets = { available, nextExpiresAt: nextExpiresMs };
+    // Also honour a top-level available_count if the list was empty/omitted.
+    if (!available && typeof r.available_count === "number") available = r.available_count;
+    input.resets = input.resets
+      ? { available: input.resets.available, nextExpiresAt }
+      : { available, nextExpiresAt };
   }
 
   return input;
 }
 
+interface ParsedWindow {
+  remaining: number;
+  resetAtMs: number | null;
+  seconds: number | null;
+}
+
+/** Parse both current used-percent windows and legacy remaining-percent windows. */
+function parseWindow(w: Record<string, unknown>): ParsedWindow | null {
+  // Prefer used_percent; fall back to remaining_percent (convert).
+  let remaining: number | null = null;
+  if (w.used_percent !== undefined) remaining = 100 - readPercent(w.used_percent);
+  else if (w.remaining_percent !== undefined) remaining = readPercent(w.remaining_percent);
+  if (remaining === null) return null;
+
+  const resetAt = w.reset_at ?? w.resets_at ?? w.resetAt ?? null;
+  const rawSeconds = Number(w.limit_window_seconds);
+  return {
+    remaining: Math.max(0, Math.min(100, remaining)),
+    resetAtMs: toMs(resetAt),
+    seconds: Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : null,
+  };
+}
+
+/** Assign a parsed window to the 5h or 7d bucket based on its kind + window length. */
+function assignWindow(
+  input: CodexQuotaInput,
+  win: ParsedWindow,
+  kind: string,
+  legacy: boolean,
+): void {
+  const k = String(kind).toLowerCase();
+  // The window length is authoritative when the API reports it: anything
+  // shorter than a day is the 5h window.
+  //
+  // Without it we fall back to the name. In the current shape `primary_window`
+  // is the 7-day window (limit_window_seconds=604800) and `secondary_window`
+  // is the 5-hour one — the opposite of what the name suggests, so this branch
+  // must not treat "primary" as 5h.
+  const isFiveHour =
+    win.seconds !== null
+      ? win.seconds < 24 * 60 * 60
+      : k.includes("5h") || k.includes("hour") || (legacy ? k === "primary" : k === "secondary");
+  if (isFiveHour) {
+    input.fiveHour = { remaining: win.remaining, resetAt: win.resetAtMs };
+  } else {
+    input.weekly = { remaining: win.remaining, resetAt: win.resetAtMs };
+  }
+}
+
 function readPercent(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   if (!Number.isFinite(n)) return 0;
-  // wham may return 0..1 or 0..100; normalize to 0..100.
-  if (n >= 0 && n <= 1) return n * 100;
-  return Math.max(0, Math.min(100, n));
+  return n >= 0 && n <= 1 ? n * 100 : Math.max(0, Math.min(100, n));
 }
 
 function toMs(v: unknown): number | null {

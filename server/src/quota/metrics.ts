@@ -17,14 +17,18 @@ export interface CodexQuotaInput {
   resets?: { available?: number; nextExpiresAt?: number | string | null };
 }
 
-/** Claude raw shape (config-only). */
+/** Claude raw shape produced by the OAuth usage fetcher / mock. */
 export interface ClaudeQuotaInput {
-  fiveHour?: { remaining?: number };
-  weekly?: { remaining?: number };
+  fiveHour?: { remaining?: number; resetAt?: number | string | null };
+  weekly?: { remaining?: number; resetAt?: number | string | null };
 }
 
 /** Build Codex metrics from input. Source is whatever the caller asserts. */
-export function buildCodexMetrics(input: CodexQuotaInput, source: QuotaSource): QuotaMetric[] {
+export function buildCodexMetrics(
+  input: CodexQuotaInput,
+  source: QuotaSource,
+  accountName?: string,
+): QuotaMetric[] {
   const out: QuotaMetric[] = [];
   const now = Date.now();
 
@@ -35,6 +39,7 @@ export function buildCodexMetrics(input: CodexQuotaInput, source: QuotaSource): 
       key: "codex_5h",
       label: "Codex 5h",
       provider: "codex",
+      accountName,
       window: "5h",
       semantics: "remaining",
       percentage: remaining,
@@ -54,6 +59,7 @@ export function buildCodexMetrics(input: CodexQuotaInput, source: QuotaSource): 
       key: "codex_7d",
       label: "Codex 7d",
       provider: "codex",
+      accountName,
       window: "7d",
       semantics: "remaining",
       percentage: remaining,
@@ -73,6 +79,7 @@ export function buildCodexMetrics(input: CodexQuotaInput, source: QuotaSource): 
       key: "codex_resets",
       label: "Resets",
       provider: "codex",
+      accountName,
       window: "resets",
       semantics: "count",
       percentage: available,
@@ -89,8 +96,13 @@ export function buildCodexMetrics(input: CodexQuotaInput, source: QuotaSource): 
 }
 
 /** Build Claude metrics from input (config-only). */
-export function buildClaudeMetrics(input: ClaudeQuotaInput, source: QuotaSource): QuotaMetric[] {
+export function buildClaudeMetrics(
+  input: ClaudeQuotaInput,
+  source: QuotaSource,
+  accountName?: string,
+): QuotaMetric[] {
   const out: QuotaMetric[] = [];
+  const now = Date.now();
 
   const fh = input.fiveHour;
   if (fh) {
@@ -99,12 +111,15 @@ export function buildClaudeMetrics(input: ClaudeQuotaInput, source: QuotaSource)
       key: "claude_5h",
       label: "Claude 5h",
       provider: "claude",
+      accountName,
       window: "5h",
       semantics: "remaining",
       percentage: remaining,
       quotaClass: classify(remaining, "remaining"),
       valueText: formatPercent(remaining),
       progressPercent: progressForDisplay(remaining, "remaining"),
+      resetText: formatResetText(fh.resetAt, now),
+      nextResetAt: toEpochMs(fh.resetAt),
       source,
     });
   }
@@ -116,12 +131,15 @@ export function buildClaudeMetrics(input: ClaudeQuotaInput, source: QuotaSource)
       key: "claude_7d",
       label: "Claude 7d",
       provider: "claude",
+      accountName,
       window: "7d",
       semantics: "remaining",
       percentage: remaining,
       quotaClass: classify(remaining, "remaining"),
       valueText: formatPercent(remaining),
       progressPercent: progressForDisplay(remaining, "remaining"),
+      resetText: formatResetText(wk.resetAt, now),
+      nextResetAt: toEpochMs(wk.resetAt),
       source,
     });
   }

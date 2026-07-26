@@ -21,6 +21,14 @@ export interface CodexAuth {
   origin: "authjson" | "config";
 }
 
+/** Account identity decoded from the id_token JWT (for the display header). */
+export interface CodexAccount {
+  /** Display name, e.g. "Example User". */
+  name?: string;
+  /** Email, e.g. "you@example.com". */
+  email?: string;
+}
+
 /** Shape of ~/.codex/auth.json (the parts we care about). */
 interface CodexAuthJson {
   OPENAI_API_KEY?: string | null;
@@ -39,6 +47,46 @@ interface CodexAuthJson {
 export function defaultAuthJsonPath(): string {
   const home = os.homedir();
   return path.join(home, ".codex", "auth.json");
+}
+
+/**
+ * Decode the `name`/`email` claims from an OpenAI id_token (a JWT). The payload
+ * is the middle base64url segment. Returns {} if anything is missing/malformed.
+ */
+export function decodeAccountFromIdToken(idToken: string | null | undefined): CodexAccount {
+  if (!idToken || typeof idToken !== "string") return {};
+  const parts = idToken.split(".");
+  const payloadSeg = parts[1];
+  if (!payloadSeg) return {};
+  try {
+    // JWT payload is base64url. Convert to base64 and pad so Buffer can decode it.
+    const b64 = payloadSeg.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
+    const out: CodexAccount = {};
+    if (typeof payload.name === "string" && payload.name.trim()) out.name = payload.name.trim();
+    if (typeof payload.email === "string" && payload.email.trim()) out.email = payload.email.trim();
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Read the account identity (name/email) from ~/.codex/auth.json's id_token.
+ * Returns {} if the file or id_token is unavailable. Used purely for the
+ * display header — never sent anywhere.
+ */
+export function loadCodexAccount(opts: {
+  autoReadAuthJson: boolean;
+  authJsonPath: string | null;
+}): CodexAccount {
+  if (!opts.autoReadAuthJson) return {};
+  const p = opts.authJsonPath || defaultAuthJsonPath();
+  const raw = readJsonOrNull(p);
+  if (!raw || typeof raw !== "object") return {};
+  const aj = raw as CodexAuthJson;
+  return decodeAccountFromIdToken(aj.tokens?.id_token);
 }
 
 /** Read & parse a JSON file, returning null on any error. */

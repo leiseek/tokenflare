@@ -12,28 +12,48 @@ export interface ServerConfig {
   port: number;
 }
 
+/** Proxy config for outbound HTTP (wham fetch). null = direct. */
+export interface ProxyConfig {
+  /** Full proxy URL, e.g. "socks5://127.0.0.1:10808" or "http://127.0.0.1:7890". */
+  url: string;
+}
+
 export interface CodexConfig {
   autoReadAuthJson: boolean;
   authJsonPath: string | null;
   pollSeconds: number;
+  /**
+   * Tail ~/.codex/sessions transcripts to track Codex Desktop/CLI sessions.
+   * Desktop does not dispatch hooks, so this is how Codex sessions surface.
+   * Default true.
+   */
+  watch: boolean;
+  /** Watcher poll interval in ms (default 3000). */
+  watchIntervalMs?: number;
   oauth: {
     accessToken?: string;
     refreshToken?: string;
     accountId?: string;
     expiresAt?: number;
   } | null;
-  fallback: {
-    fiveHour?: { remaining?: number; resetAt?: number | string | null };
-    weekly?: { remaining?: number; resetAt?: number | string | null };
-    resets?: { available?: number; nextExpiresAt?: number | string | null };
-  };
 }
 
 export interface ClaudeConfig {
-  fallback: {
-    fiveHour?: { remaining?: number };
-    weekly?: { remaining?: number };
-  };
+  /**
+   * Read ~/.claude/.credentials.json (or the macOS Keychain) to fetch live 5h /
+   * 7d usage, the same numbers Claude Code's `/usage` command shows.
+   * Default true. Set false to leave Claude cards off entirely.
+   */
+  autoReadCredentials: boolean;
+  /** Override the credentials file path. null = platform default. */
+  credentialsPath: string | null;
+  /** Usage poll interval in seconds (default 300). */
+  pollSeconds: number;
+  /** Explicit token override; normally null (the credentials file is used). */
+  oauth: { accessToken?: string } | null;
+  /** Display name for the Claude account shown above its quota cards.
+   *  Defaults to "Claude Code". */
+  accountName?: string;
 }
 
 export interface DisplayConfig {
@@ -48,26 +68,27 @@ export interface AppConfig {
   codex: CodexConfig;
   claude: ClaudeConfig;
   display: DisplayConfig;
+  /** Outbound proxy for the wham fetcher. null/undefined = direct connection. */
+  proxy?: ProxyConfig | null;
 }
 
 const DEFAULTS: AppConfig = {
   server: { host: "0.0.0.0", port: 7331 },
+  proxy: null,
   codex: {
     autoReadAuthJson: true,
     authJsonPath: null,
     pollSeconds: 300,
+    watch: true,
+    watchIntervalMs: 3000,
     oauth: null,
-    fallback: {
-      fiveHour: { remaining: 80 },
-      weekly: { remaining: 91 },
-      resets: { available: 2 },
-    },
   },
   claude: {
-    fallback: {
-      fiveHour: { remaining: 38 },
-      weekly: { remaining: 67 },
-    },
+    autoReadCredentials: true,
+    credentialsPath: null,
+    pollSeconds: 300,
+    oauth: null,
+    accountName: "Claude Code",
   },
   display: {
     defaultTheme: "neon-dark",
@@ -127,6 +148,16 @@ export function loadConfig(): AppConfig {
   if (process.env.TOKENFLARE_HOST) cfg.server.host = String(process.env.TOKENFLARE_HOST);
   if (process.env.TOKENFLARE_PORT) cfg.server.port = Number(process.env.TOKENFLARE_PORT) || cfg.server.port;
   if (process.env.TOKENFLARE_CODEX_POLL) cfg.codex.pollSeconds = Number(process.env.TOKENFLARE_CODEX_POLL) || cfg.codex.pollSeconds;
+  if (process.env.TOKENFLARE_CLAUDE_POLL) cfg.claude.pollSeconds = Number(process.env.TOKENFLARE_CLAUDE_POLL) || cfg.claude.pollSeconds;
+  if (process.env.TOKENFLARE_CLAUDE_CREDENTIALS) cfg.claude.credentialsPath = String(process.env.TOKENFLARE_CLAUDE_CREDENTIALS);
+  if (process.env.TOKENFLARE_CODEX_WATCH === "false" || process.env.TOKENFLARE_CODEX_WATCH === "0") cfg.codex.watch = false;
+  if (process.env.TOKENFLARE_CODEX_WATCH === "true" || process.env.TOKENFLARE_CODEX_WATCH === "1") cfg.codex.watch = true;
+  if (process.env.TOKENFLARE_PROXY) cfg.proxy = { url: String(process.env.TOKENFLARE_PROXY) };
+  // Also honor the conventional HTTP(S)_PROXY env vars as a fallback.
+  if (!cfg.proxy) {
+    const hp = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+    if (hp) cfg.proxy = { url: hp };
+  }
 
   return cfg;
 }
@@ -138,10 +169,15 @@ export function sanitizeConfigForClient(cfg: AppConfig): unknown {
     codex: {
       autoReadAuthJson: cfg.codex.autoReadAuthJson,
       pollSeconds: cfg.codex.pollSeconds,
+      watch: cfg.codex.watch,
       hasOauth: !!cfg.codex.oauth?.accessToken,
-      fallback: cfg.codex.fallback,
     },
-    claude: { fallback: cfg.claude.fallback },
+    claude: {
+      autoReadCredentials: cfg.claude.autoReadCredentials,
+      pollSeconds: cfg.claude.pollSeconds,
+      hasOauth: !!cfg.claude.oauth?.accessToken,
+      accountName: cfg.claude.accountName,
+    },
     display: cfg.display,
   };
 }

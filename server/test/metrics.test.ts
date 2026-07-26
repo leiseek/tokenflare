@@ -80,3 +80,28 @@ test("resets count semantics: progress bar normalizes via count", () => {
   // 2 of 3 -> 66.67 -> rounded to 67 for display.
   assert.equal(m[0].progressPercent, 67);
 });
+
+test("no 5h window -> no 5h card (ChatGPT temporarily dropped the 5h limit)", () => {
+  // Only weekly + resets returned; the 5h card must simply not be produced.
+  const m = buildCodexMetrics({ weekly: { remaining: 50 }, resets: { available: 1 } }, "live");
+  assert.equal(m.length, 2);
+  assert.equal(m.find((x) => x.key === "codex_5h"), undefined);
+  assert.ok(m.find((x) => x.key === "codex_7d"));
+  assert.ok(m.find((x) => x.key === "codex_resets"));
+});
+
+test("empty input -> no cards (no fabricated placeholders)", () => {
+  assert.deepEqual(buildCodexMetrics({}, "config"), []);
+  assert.deepEqual(buildClaudeMetrics({}, "config"), []);
+});
+
+test("accountName is threaded onto every card", () => {
+  const m = buildCodexMetrics(
+    { weekly: { remaining: 50 }, resets: { available: 1 } },
+    "live",
+    "Example User",
+  );
+  assert.ok(m.every((x) => x.accountName === "Example User"));
+  const c = buildClaudeMetrics({ weekly: { remaining: 50 } }, "config", "Claude Code");
+  assert.equal(c[0].accountName, "Claude Code");
+});

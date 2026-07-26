@@ -7,16 +7,17 @@
  * had live data.
  */
 import { fetchCodexUsage } from "../quota/codexWham.js";
+import { loadCodexAccount } from "../quota/codexAuth.js";
 import { buildCodexMetrics } from "../quota/metrics.js";
-import { mergeMetrics, sortMetrics } from "../quota/metrics.js";
-import { buildClaudeMetrics } from "../quota/metrics.js";
+import { sortMetrics } from "../quota/metrics.js";
 import type { Store } from "../state/store.js";
-import type { CodexConfig, ClaudeConfig } from "../config.js";
+import type { CodexConfig } from "../config.js";
 
 export interface PollCtx {
   store: Store;
   codex: CodexConfig;
-  claude: ClaudeConfig;
+  /** Proxy URL for the wham fetcher (socks5://... or http://...). null = direct. */
+  proxyUrl?: string | null;
   /** Injected for tests. */
   fetchImpl?: typeof fetch;
   /** Logger. */
@@ -25,32 +26,48 @@ export interface PollCtx {
 
 let timer: NodeJS.Timeout | null = null;
 
+/** A display account name: prefer the human name, fall back to email. */
+function codexAccountLabel(opts: { autoReadAuthJson: boolean; authJsonPath: string | null }): string | undefined {
+  const acct = loadCodexAccount(opts);
+  return acct.name || acct.email || undefined;
+}
+
 /** Run one poll immediately. Safe to call anytime. */
 export async function pollOnce(ctx: PollCtx): Promise<void> {
   const log = ctx.log ?? (() => undefined);
+
+  // Resolve the fetch implementation: explicit injection > proxy > direct.
+  let fetchImpl = ctx.fetchImpl;
+  if (!fetchImpl && ctx.proxyUrl) {
+    const { createProxiedFetch } = await import("../quota/proxyFetch.js");
+    fetchImpl = await createProxiedFetch(ctx.proxyUrl);
+  }
+
   const result = await fetchCodexUsage({
     autoReadAuthJson: ctx.codex.autoReadAuthJson,
     authJsonPath: ctx.codex.authJsonPath,
     configOauth: ctx.codex.oauth,
-    fetchImpl: ctx.fetchImpl,
+    fetchImpl,
   });
 
   if (result.ok && result.data) {
-    log(`codex wham ok (source=live)`);
-    const codexMetrics = buildCodexMetrics(result.data, "live");
-    const claudeMetrics = buildClaudeMetrics(ctx.claude.fallback, "config");
-    ctx.store.setMetrics(sortMetrics(mergeMetrics(codexMetrics, claudeMetrics)));
+    log(`codex wham ok (source=live, ${ctx.proxyUrl ? "via proxy" : "direct"})`);
+    const codexMetrics = buildCodexMetrics(result.data, "live", codexAccountLabel(ctx.codex));
+    // Keep any existing (e.g. mock-POSTed) claude cards; only replace the codex ones.
+    const existing = ctx.store.getMetrics().filter((m) => m.provider !== "codex");
+    ctx.store.setMetrics(sortMetrics([...existing, ...codexMetrics]));
     ctx.store.setSources({ codex: "live" });
   } else {
-    log(`codex wham failed: ${result.error ?? "unknown"} — using fallback`);
-    // Only rebuild from fallback if we don't already have live metrics; otherwise
-    // keep the stale-but-recent live numbers (better than overwriting with config).
+    log(`codex wham failed: ${result.error ?? "unknown"} — no live data`);
+    // No live Codex data. We do NOT fabricate placeholder cards from config
+    // fallback — the display shows "not connected" for any provider without
+    // real data. Drop stale codex cards; leave any mock-POSTed claude cards
+    // intact by only removing the codex ones.
     const sources = ctx.store.getSources();
     if (sources.codex !== "live") {
-      const codexMetrics = buildCodexMetrics(ctx.codex.fallback, "config");
-      const claudeMetrics = buildClaudeMetrics(ctx.claude.fallback, "config");
-      ctx.store.setMetrics(sortMetrics(mergeMetrics(codexMetrics, claudeMetrics)));
-      ctx.store.setSources({ codex: "config" });
+      const remaining = ctx.store.getMetrics().filter((m) => m.provider !== "codex");
+      ctx.store.setMetrics(remaining);
+      ctx.store.setSources({ codex: "unavailable" });
     }
   }
 }

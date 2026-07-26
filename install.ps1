@@ -4,8 +4,8 @@
 
 .DESCRIPTION
   One-command installer for tokenflare. Verifies Node.js 20+, runs npm install,
-  builds the server, and (optionally) installs the Playwright browser for e2e
-  tests. Prints clear next steps. Safe to re-run.
+  interactively configures the outbound proxy, builds the server, and
+  (optionally) installs the Playwright browser for e2e tests. Safe to re-run.
 
 .PARAMETER SkipBuild
   Skip `npm run build` (use the tsx source runner instead).
@@ -16,6 +16,9 @@
 .PARAMETER Force
   Reinstall even if node_modules already exists.
 
+.PARAMETER NoPrompt
+  Keep the existing proxy setting without asking interactive questions.
+
 .EXAMPLE
   .\install.ps1
   .\install.ps1 -InstallTestBrowser
@@ -24,7 +27,8 @@
 param(
   [switch]$SkipBuild,
   [switch]$InstallTestBrowser,
-  [switch]$Force
+  [switch]$Force,
+  [switch]$NoPrompt
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,6 +38,97 @@ function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg)   { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
 function Write-Err($msg)  { Write-Host "    ERROR: $msg" -ForegroundColor Red }
+
+function Read-YesNo([string]$Prompt, [bool]$Default) {
+  $hint = if ($Default) { "[Y/n]" } else { "[y/N]" }
+  while ($true) {
+    $answer = (Read-Host "$Prompt $hint").Trim().ToLowerInvariant()
+    if (-not $answer) { return $Default }
+    if ($answer -in @("y", "yes")) { return $true }
+    if ($answer -in @("n", "no")) { return $false }
+    Write-Warn "Please enter y or n."
+  }
+}
+
+function Set-ProxyConfig([string]$ConfigPath, [AllowNull()][string]$ProxyUrl) {
+  try {
+    $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+  } catch {
+    throw "Could not read $ConfigPath as JSON: $($_.Exception.Message)"
+  }
+
+  if ($config.PSObject.Properties.Name -contains "proxy") {
+    $config.proxy = if ($ProxyUrl) { [pscustomobject]@{ url = $ProxyUrl } } else { $null }
+  } else {
+    $value = if ($ProxyUrl) { [pscustomobject]@{ url = $ProxyUrl } } else { $null }
+    $config | Add-Member -NotePropertyName proxy -NotePropertyValue $value
+  }
+
+  $json = $config | ConvertTo-Json -Depth 20
+  [System.IO.File]::WriteAllText($ConfigPath, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Configure-Proxy {
+  $configPath = Join-Path $root "config\tokenflare.config.json"
+  $examplePath = Join-Path $root "config\tokenflare.config.example.json"
+  if (-not (Test-Path -LiteralPath $configPath)) {
+    # The real config is gitignored (it holds machine-specific values), so a
+    # fresh clone starts from the checked-in template.
+    if (Test-Path -LiteralPath $examplePath) {
+      Copy-Item -LiteralPath $examplePath -Destination $configPath
+      Write-Ok "Created config\tokenflare.config.json from the example."
+    } else {
+      Write-Warn "Config file not found: $configPath (skipping proxy setup)."
+      return
+    }
+  }
+
+  $currentUrl = $null
+  try {
+    $current = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    if ($current.proxy -and $current.proxy.url) { $currentUrl = [string]$current.proxy.url }
+  } catch {
+    Write-Warn "Could not inspect the current proxy config; it will be validated when saved."
+  }
+
+  Write-Step "Configuring the network proxy for Codex quota requests..."
+  if ($currentUrl) {
+    Write-Ok "Current proxy: $currentUrl"
+    if (Read-YesNo "Keep this proxy?" $true) { return }
+  }
+
+  if (-not (Read-YesNo "Use a proxy?" $false)) {
+    Set-ProxyConfig $configPath $null
+    Write-Ok "Proxy disabled; Tokenflare will connect directly."
+    return
+  }
+
+  Write-Host "    1) HTTP" -ForegroundColor White
+  Write-Host "    2) SOCKS5 (DNS also goes through the proxy)" -ForegroundColor White
+  while ($true) {
+    $proxyType = (Read-Host "    Proxy type [1/2]").Trim().ToLowerInvariant()
+    if ($proxyType -in @("1", "http")) { $scheme = "http"; break }
+    if ($proxyType -in @("2", "sock", "socks", "socks5")) { $scheme = "socks5h"; break }
+    Write-Warn "Choose 1 for HTTP or 2 for SOCKS5."
+  }
+
+  $proxyHost = (Read-Host "    Proxy IP or hostname [127.0.0.1]").Trim()
+  if (-not $proxyHost) { $proxyHost = "127.0.0.1" }
+  if ($proxyHost.Contains(":") -and -not $proxyHost.StartsWith("[")) {
+    $proxyHost = "[$proxyHost]"
+  }
+
+  while ($true) {
+    $portText = (Read-Host "    Proxy port").Trim()
+    $port = 0
+    if ([int]::TryParse($portText, [ref]$port) -and $port -ge 1 -and $port -le 65535) { break }
+    Write-Warn "Enter a port from 1 to 65535."
+  }
+
+  $proxyUrl = "${scheme}://${proxyHost}:$port"
+  Set-ProxyConfig $configPath $proxyUrl
+  Write-Ok "Proxy saved: $proxyUrl"
+}
 
 Write-Host ""
 Write-Host "  tokenflare installer" -ForegroundColor White
@@ -61,7 +156,14 @@ if ($nodeMajor -lt 20) {
 }
 Write-Ok "Node.js $nodeVersionRaw found."
 
-# ---- 2. npm install ----
+# ---- 2. proxy configuration ----
+if ($NoPrompt) {
+  Write-Step "Keeping the existing proxy config (-NoPrompt)."
+} else {
+  Configure-Proxy
+}
+
+# ---- 3. npm install ----
 $hasNodeModules = Test-Path (Join-Path $root "node_modules")
 if ($hasNodeModules -and -not $Force) {
   Write-Step "Dependencies already installed (node_modules exists). Use -Force to reinstall."
@@ -75,7 +177,7 @@ if ($hasNodeModules -and -not $Force) {
   Write-Ok "Dependencies installed."
 }
 
-# ---- 3. build ----
+# ---- 4. build ----
 if ($SkipBuild) {
   Write-Step "Skipping build (-SkipBuild). Server will run from source via tsx."
 } else {
@@ -88,7 +190,7 @@ if ($SkipBuild) {
   Write-Ok "Server built -> server/dist/"
 }
 
-# ---- 4. optional: test browser ----
+# ---- 5. optional: test browser ----
 if ($InstallTestBrowser) {
   Write-Step "Installing Playwright Chromium (for e2e tests)..."
   Push-Location $root
@@ -98,7 +200,27 @@ if ($InstallTestBrowser) {
   Write-Ok "Playwright browser installed."
 }
 
-# ---- 5. summary ----
+# ---- 6. connect coding-agent hooks ----
+if ($NoPrompt) {
+  Write-Step "Skipping interactive Codex/Claude Code hook setup (-NoPrompt)."
+} else {
+  Write-Step "Connecting coding agents for live task status..."
+  $codexFound = [bool](Get-Command codex -ErrorAction SilentlyContinue)
+  $codexPrompt = if ($codexFound) { "Connect Codex now?" } else { "Codex was not detected. Register its hooks anyway?" }
+  if (Read-YesNo $codexPrompt $codexFound) {
+    & (Join-Path $root "scripts\register-codex-hook.ps1")
+    if ($LASTEXITCODE -ne 0) { throw "Codex hook registration failed." }
+  }
+
+  $claudeFound = [bool](Get-Command claude -ErrorAction SilentlyContinue)
+  $claudePrompt = if ($claudeFound) { "Connect Claude Code now?" } else { "Claude Code was not detected. Register its hooks anyway?" }
+  if (Read-YesNo $claudePrompt $claudeFound) {
+    & (Join-Path $root "scripts\register-claude-hook.ps1")
+    if ($LASTEXITCODE -ne 0) { throw "Claude Code hook registration failed." }
+  }
+}
+
+# ---- 7. summary ----
 Write-Host ""
 Write-Host "  Done!" -ForegroundColor Green
 Write-Host ""
@@ -106,9 +228,8 @@ Write-Host "  Next:" -ForegroundColor White
 Write-Host "    1. Start the server:  npm start" -ForegroundColor White
 Write-Host "       (it prints the phone URL in a banner)" -ForegroundColor DarkGray
 Write-Host "    2. Open that URL on your phone's browser, add to home screen." -ForegroundColor White
-Write-Host "    3. (optional) Wire real agent hooks:" -ForegroundColor White
-Write-Host "         .\scripts\register-codex-hook.ps1" -ForegroundColor White
-Write-Host "         .\scripts\register-claude-hook.ps1" -ForegroundColor White
+Write-Host "    3. Codex/Claude Code hooks can be changed anytime:" -ForegroundColor White
+Write-Host "         .\scripts\register-*-hook.ps1 / unregister-*-hook.ps1" -ForegroundColor White
 Write-Host ""
 Write-Host "  Docs: README.md | Uninstall: .\uninstall.ps1" -ForegroundColor DarkGray
 Write-Host ""

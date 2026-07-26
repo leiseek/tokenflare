@@ -1,0 +1,44 @@
+{
+  "$comment": [
+    "Copy this file to config/tokenflare.config.json (install.ps1 / install.sh do it for you).",
+    "The real config is gitignored because the installer writes machine-specific values",
+    "(such as your proxy) into it.",
+    "Every field is optional: the server boots with these defaults if the file is absent."
+  ],
+
+  "server": {
+    "host": "0.0.0.0",
+    "port": 7331
+  },
+
+  "$comment_proxy": [
+    "Outbound proxy for the Codex + Claude quota fetches. null = direct connection.",
+    "Node's fetch ignores HTTP_PROXY, so this is how you route through one.",
+    "Examples: \"http://127.0.0.1:7890\", \"socks5h://127.0.0.1:10808\"."
+  ],
+  "proxy": null,
+
+  "codex": {
+    "autoReadAuthJson": true,
+    "authJsonPath": null,
+    "pollSeconds": 300,
+    "watch": true,
+    "watchIntervalMs": 3000,
+    "oauth": null
+  },
+
+  "claude": {
+    "autoReadCredentials": true,
+    "credentialsPath": null,
+    "pollSeconds": 300,
+    "oauth": null,
+    "accountName": "Claude Code"
+  },
+
+  "display": {
+    "defaultTheme": "neon-dark",
+    "defaultFont": "jetbrains",
+    "defaultBackground": "mesh",
+    "defaultReducedMotion": false
+  }
+}
