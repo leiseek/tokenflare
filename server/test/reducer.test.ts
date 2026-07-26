@@ -98,8 +98,12 @@ test("elapsedSeconds computes from startedAt", () => {
   assert.equal(elapsedSeconds(null, NOW), 0);
 });
 
-test("Stop maps to activity, not completed (pulse-island rule)", () => {
+test("completed turn can be revived by the next UserPromptSubmit", () => {
   let task = reduce(null, ev("started", "t1", NOW - 1000), NOW - 1000).task;
-  task = reduce(task, ev("activity", "t1", NOW), NOW).task; // a "Stop" event
-  assert.equal(task!.status, "running"); // NOT completed
+  task = reduce(task, ev("completed", "t1", NOW), NOW).task;
+  assert.equal(task.status, "completed");
+
+  task = reduce(task, ev("started", "t1", NOW + 1000), NOW + 1000).task;
+  assert.equal(task.status, "running");
+  assert.equal(task.startedAt, NOW + 1000);
 });

@@ -1,47 +1,70 @@
 /**
  * Tokenflare server entry point.
  *
- * Boots the in-memory store, seeds it with fallback quota (so the display is
- * never blank), starts the Codex wham poller, and listens on the configured
- * host:port. Prints a startup banner with the LAN URL to open on the phone.
+ * Boots the in-memory store, starts the Codex wham poller + transcript watcher,
+ * and listens on the configured host:port. Prints a startup banner with the LAN
+ * URL to open on the phone. Quota cards are only populated from real live data;
+ * the display shows "not connected" until then (no fabricated placeholders).
  */
 import os from "node:os";
 import { loadConfig } from "./config.js";
 import { Store } from "./state/store.js";
 import { createServer } from "./server.js";
-import { buildCodexMetrics, buildClaudeMetrics, mergeMetrics, sortMetrics } from "./quota/metrics.js";
 import { startCodexPoll } from "./jobs/codexPoll.js";
+import { startClaudePoll } from "./jobs/claudePoll.js";
+import { startCodexWatcher } from "./jobs/codexWatcher.js";
+import { startInstanceSweeper } from "./jobs/sweepInstances.js";
 
 function main(): void {
   const config = loadConfig();
   const store = new Store();
 
-  // Seed metrics from config fallback so the display is populated immediately
-  // (before the first wham poll completes).
-  const seedMetrics = sortMetrics(
-    mergeMetrics(
-      buildCodexMetrics(config.codex.fallback, "config"),
-      buildClaudeMetrics(config.claude.fallback, "config"),
-    ),
-  );
-  store.setMetrics(seedMetrics, { silent: true });
-  store.setSources({ codex: "config", claude: "config" }, { silent: true });
+  // Seed with NO quota cards: we only show real data. The display renders an
+  // explicit "not connected" state until the first live wham poll succeeds
+  // (Codex) or a mock/config POST supplies Claude numbers. Fabricated fallback
+  // placeholders were removed so the user never sees fake percentages.
+  store.setMetrics([], { silent: true });
+  store.setSources({ codex: "unavailable", claude: "unavailable" }, { silent: true });
 
   // Start the background Codex poller (fail-open; errors are logged, not fatal).
   const stopPoll = startCodexPoll({
     store,
     codex: config.codex,
-    claude: config.claude,
+    proxyUrl: config.proxy?.url ?? null,
     log: (m) => console.log(`[codex] ${m}`),
   });
+
+  // Same for Claude Code: live 5h/7d usage read via the local OAuth credentials.
+  const stopClaudePoll = startClaudePoll({
+    store,
+    claude: config.claude,
+    proxyUrl: config.proxy?.url ?? null,
+    log: (m) => console.log(`[claude] ${m}`),
+  });
+
+  // Age out sessions that stopped reporting, so the rail shows what is actually
+  // running instead of accumulating every session since boot.
+  const stopSweeper = startInstanceSweeper({ store });
+
+  // Codex Desktop/CLI session transcript watcher. Reconstructs live state by
+  // tailing ~/.codex/sessions (hooks.json is a CLI-only feature, so Desktop
+  // sessions would otherwise be invisible). Fail-open; never crashes the server.
+  const stopWatch = config.codex.watch
+    ? startCodexWatcher({
+        store,
+        codexHome: process.env.TOKENFLARE_CODEX_HOME,
+        intervalMs: config.codex.watchIntervalMs,
+        log: (m) => console.log(`[codex] ${m}`),
+      })
+    : () => undefined;
 
   const server = createServer({ config, store });
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       console.error(`\n[error] port ${config.server.port} is already in use.`);
       console.error(`        This usually means a previous Tokenflare instance is still running.`);
-      console.error(`        Set TOKENFLARE_PORT (or config.server.port) to a free port, or stop the other process.`);
-      console.error(`        Example: TOKENFLARE_PORT=7332 npm start`);
+      console.error(`        Run \`npm run kill-port\` (or \`npm run restart\`) to free it, then start again.`);
+      console.error(`        Or set TOKENFLARE_PORT to a different port, e.g. TOKENFLARE_PORT=7332 npm start`);
     } else {
       console.error(`\n[error] server failed: ${err.message}`);
     }
@@ -67,6 +90,7 @@ function main(): void {
     }
     line("ws:      /ws");
     line("codex:   " + (config.codex.autoReadAuthJson ? "auto-read ~/.codex/auth.json" : "config oauth"));
+    line("watch:   " + (config.codex.watch ? "tailing ~/.codex/sessions" : "disabled"));
     console.log("└" + "─".repeat(INNER + 2) + "┘");
   });
 
@@ -74,6 +98,9 @@ function main(): void {
   const shutdown = (sig: string) => {
     console.log(`\n[${sig}] shutting down...`);
     stopPoll();
+    stopClaudePoll();
+    stopSweeper();
+    stopWatch();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 2000).unref();
   };

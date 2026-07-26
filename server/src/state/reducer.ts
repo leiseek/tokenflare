@@ -78,13 +78,15 @@ export function reduce(
     return { task, changed: true };
   }
 
-  // started/again or activity/waiting: keep label/cwd, update status + timestamp.
+  // UserPromptSubmit maps to started, so a new turn in the same session revives
+  // a completed task and resets the elapsed timer.
   const task: TaskState = {
     ...prior,
     status: incoming,
     lastActivityAt: ev.occurredAt,
-    // If we had no startedAt (e.g. first event wasn't SessionStart), set it now.
-    startedAt: prior.startedAt ?? ev.occurredAt,
+    startedAt: ev.event === "started" ? ev.occurredAt : (prior.startedAt ?? ev.occurredAt),
+    cwdLabel: ev.cwdLabel || prior.cwdLabel,
+    label: ev.cwdLabel || prior.label,
   };
   return { task, changed: true };
 }

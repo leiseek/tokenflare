@@ -7,7 +7,68 @@ test("store starts empty with revision 0", () => {
   const s = new Store();
   assert.equal(s.getRevision(), 0);
   assert.equal(s.getTask(), null);
+  assert.deepEqual(s.getNarrative(), []);
   assert.deepEqual(s.getMetrics(), []);
+});
+
+test("visible progress keeps only the latest per instance and broadcasts", () => {
+  const s = new Store();
+  let latestLength = 0;
+  s.subscribe((delta) => {
+    if (delta.narrative) latestLength = delta.narrative.length;
+  });
+  // Ten updates for one codex instance -> only the newest survives.
+  for (let i = 0; i < 10; i++) {
+    s.appendNarrative({
+      id: `n${i}`,
+      instanceId: "codex:ses1",
+      provider: "codex",
+      phase: "commentary",
+      text: `update ${i}`,
+      occurredAt: i,
+    });
+  }
+  assert.equal(s.getNarrative().length, 1);
+  assert.equal(s.getNarrative()[0].text, "update 9");
+  assert.equal(latestLength, 1);
+  // A second instance keeps its own single latest entry.
+  for (let i = 0; i < 3; i++) {
+    s.appendNarrative({
+      id: `c${i}`,
+      instanceId: "claude:ses2",
+      provider: "claude",
+      phase: "commentary",
+      text: `claude update ${i}`,
+      occurredAt: 20 + i,
+    });
+  }
+  assert.equal(s.getNarrative().length, 2);
+  assert.equal(s.getNarrative().filter((e) => e.provider === "codex").length, 1);
+  assert.equal(s.getNarrative().filter((e) => e.provider === "claude").length, 1);
+  assert.equal(s.getNarrative().find((e) => e.provider === "claude")!.text, "claude update 2");
+  // Identical consecutive text for the same instance is a no-op.
+  const before = s.getRevision();
+  s.appendNarrative({ id: "dup", instanceId: "codex:ses1", provider: "codex", phase: "commentary", text: "update 9", occurredAt: 99 });
+  assert.equal(s.getRevision(), before);
+  s.clearNarrative("codex");
+  assert.equal(s.getNarrative().length, 1);
+  assert.ok(s.getNarrative().every((entry) => entry.provider === "claude"));
+  s.clearNarrative();
+  assert.deepEqual(s.getNarrative(), []);
+});
+
+test("concurrent instances are independent and do not clobber each other", () => {
+  const s = new Store();
+  s.setTask({ taskId: "ses1", provider: "codex", cwdLabel: "proj-a", status: "running", startedAt: 1, lastActivityAt: 5, label: "proj-a" });
+  s.setTask({ taskId: "ses2", provider: "claude", cwdLabel: "proj-b", status: "running", startedAt: 2, lastActivityAt: 9, label: "proj-b" });
+  // Both instances coexist.
+  assert.equal(s.getInstances().length, 2);
+  // The most-active projection points at the later-activity instance.
+  assert.equal(s.getTask()!.taskId, "ses2");
+  // A status change on one does not affect the other.
+  s.upsertInstance("codex:ses1", { status: "completed" });
+  assert.equal(s.getInstance("codex:ses1")!.status, "completed");
+  assert.equal(s.getInstance("claude:ses2")!.status, "running");
 });
 
 test("setTask bumps revision and broadcasts delta", () => {
