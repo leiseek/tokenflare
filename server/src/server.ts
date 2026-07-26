@@ -19,7 +19,8 @@ import { sanitize, deriveLabel } from "./hooks/sanitize.js";
 import { mapEvent } from "./hooks/mapEvent.js";
 import { reduce, applyOverride } from "./state/reducer.js";
 import { Store } from "./state/store.js";
-import { buildCodexMetrics, buildClaudeMetrics, mergeMetrics, sortMetrics } from "./quota/metrics.js";
+import { buildCodexMetrics, buildClaudeMetrics, sortMetrics } from "./quota/metrics.js";
+import { loadCodexAccount } from "./quota/codexAuth.js";
 import type { CodexQuotaInput, ClaudeQuotaInput } from "./quota/metrics.js";
 import type { ClientMsg, ServerMsg, SnapshotDelta } from "./state/types.js";
 import type { QuotaMetric, QuotaSource, TaskStatus } from "./state/types.js";
@@ -111,11 +112,21 @@ export function createServer(deps: ServerDeps): http.Server {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const pathname = url.pathname;
 
-    // CORS: open for LAN/PWA use.
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    // CORS: reads are open so the PWA can be served from anywhere on the LAN.
+    //
+    // Writes are NOT. The mutating routes (hook ingress, task override, quota
+    // mock) drive what the wall displays, and this server listens on 0.0.0.0 by
+    // default — advertising `Allow-Origin: *` for them would let any page the
+    // phone happens to visit take over the display. Local clients that aren't
+    // browsers (the hook shim) don't do preflight and are unaffected.
+    if (req.method === "GET") {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    }
     if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       res.writeHead(204);
       res.end();
       return;
@@ -147,22 +158,46 @@ export function createServer(deps: ServerDeps): http.Server {
       if (!result.ok) {
         return json(res, 400, { ok: false, error: result.reason });
       }
-      const { sessionId, eventName, cwd, transcriptPath } = result.data;
+      const { sessionId, eventName, cwd, transcriptPath, narrative, narrativePhase } = result.data;
       const event = mapEvent(provider, eventName);
       const cwdLabel = deriveLabel(cwd, transcriptPath);
+      const id = `${provider}:${sessionId}`;
+      const now = Date.now();
+      // Reduce against THIS instance's prior state (multi-instance aware),
+      // not the global single task, so concurrent sessions don't interfere.
+      const priorInst = store.getInstance(id) ?? null;
+      const priorTask = priorInst
+        ? { taskId: priorInst.taskId, provider: priorInst.provider, cwdLabel: priorInst.cwdLabel, status: priorInst.status, startedAt: priorInst.startedAt, lastActivityAt: priorInst.lastActivityAt, label: priorInst.label }
+        : null;
       const reduced = reduce(
-        store.getTask(),
-        {
-          provider,
-          taskId: sessionId,
-          event,
-          cwdLabel,
-          occurredAt: Date.now(),
-          rawEventName: eventName,
-        },
-        Date.now(),
+        priorTask,
+        { provider, taskId: sessionId, event, cwdLabel, occurredAt: now, rawEventName: eventName },
+        now,
       );
-      store.setTask(reduced.task);
+      // On a new turn, drop the prior narrative for this instance only.
+      const clearedNarrative =
+        eventName === "UserPromptSubmit" ? null : priorInst?.lastNarrative ?? null;
+      store.upsertInstance(id, {
+        taskId: sessionId,
+        provider,
+        cwdLabel: reduced.task.cwdLabel,
+        status: reduced.task.status,
+        startedAt: reduced.task.startedAt,
+        lastActivityAt: reduced.task.lastActivityAt,
+        label: reduced.task.label,
+        lastNarrative: clearedNarrative,
+      });
+      if (eventName === "UserPromptSubmit") store.clearNarrative(provider);
+      if (narrative) {
+        store.appendNarrative({
+          id: `${sessionId}:${now}:${narrative.length}`,
+          instanceId: id,
+          provider,
+          phase: narrativePhase,
+          text: narrative,
+          occurredAt: now,
+        });
+      }
       return json(res, 200, { ok: true, status: reduced.task.status, changed: reduced.changed });
     }
 
@@ -172,23 +207,28 @@ export function createServer(deps: ServerDeps): http.Server {
         | null;
       const codexIn = body?.codex;
       const claudeIn = body?.claude;
+      // Only render cards for data actually provided — never fabricate
+      // placeholders from config fallback. Existing cards for a provider are
+      // replaced when new numbers are POSTed, otherwise left untouched.
+      const prior = store.getMetrics();
       const metrics: QuotaMetric[] = [];
-      let codexSrc: QuotaSource = store.getSources().codex;
-      let claudeSrc: QuotaSource = store.getSources().claude;
+      const sources = store.getSources();
+      const codexAccount = loadCodexAccount({ autoReadAuthJson: config.codex.autoReadAuthJson, authJsonPath: config.codex.authJsonPath });
+      const codexLabel = codexAccount.name || codexAccount.email;
       if (codexIn && typeof codexIn === "object") {
-        metrics.push(...buildCodexMetrics(codexIn, "live"));
-        codexSrc = "live";
+        metrics.push(...buildCodexMetrics(codexIn, "live", codexLabel));
+        sources.codex = "live";
       } else {
-        metrics.push(...buildCodexMetrics(config.codex.fallback, codexSrc));
+        metrics.push(...prior.filter((m) => m.provider === "codex"));
       }
       if (claudeIn && typeof claudeIn === "object") {
-        metrics.push(...buildClaudeMetrics(claudeIn, "config"));
-        claudeSrc = "config";
+        metrics.push(...buildClaudeMetrics(claudeIn, "config", config.claude.accountName));
+        sources.claude = "config";
       } else {
-        metrics.push(...buildClaudeMetrics(config.claude.fallback, claudeSrc));
+        metrics.push(...prior.filter((m) => m.provider === "claude"));
       }
       store.setMetrics(sortMetrics(metrics));
-      store.setSources({ codex: codexSrc, claude: claudeSrc });
+      store.setSources(sources);
       return json(res, 200, { ok: true, metrics: store.getMetrics() });
     }
 
