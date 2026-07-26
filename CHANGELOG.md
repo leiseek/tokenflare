@@ -5,7 +5,35 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-07-26
+
+Major because two things change under an existing install: quota cards that
+used to show configured numbers now show *not connected* until a real API call
+succeeds, and `config/tokenflare.config.json` is no longer tracked by git.
+
+### Upgrading from 1.0.0
+
+**Back up your config before pulling.** The file was tracked in 1.0.0 and is
+removed from the index in this release, so `git pull` will delete it from your
+working tree:
+
+```bash
+cp config/tokenflare.config.json /tmp/tokenflare.config.backup.json
+git pull
+cp /tmp/tokenflare.config.backup.json config/tokenflare.config.json   # or re-run the installer
+```
+
+Your `proxy`, `server` and `display` settings carry over unchanged. The
+`codex.fallback` and `claude.fallback` blocks are ignored now — delete them.
+Add `claude.autoReadCredentials: true` (or just copy
+`config/tokenflare.config.example.json`) to pick up live Claude quota.
+
+**Re-register your hooks** to receive `StopFailure`, which is what drives the
+red light:
+
+```bash
+./scripts/register-claude-hook.sh     # scripts\register-claude-hook.ps1 on Windows
+```
 
 ### Fixed
 - **Hook events were silently dropped whenever the agent discussed auth.** The
@@ -97,14 +125,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **No fabricated quota placeholders.** Cards are only built from real data:
-  live Codex wham numbers or explicit `POST /api/quota/mock` payloads. The
-  config `codex.fallback`/`claude.fallback` blocks are no longer seeded or used
-  to fill gaps — a provider with no data shows an explicit "未接入 (not
-  connected)" note instead of fake percentages.
-- **5h card only when the API returns it.** ChatGPT temporarily dropped the
-  5-hour limit, so the wham endpoint no longer returns a 5h window. The Codex
-  5h card now simply isn't rendered when the data is absent (the program keeps
-  full support; it returns automatically once the limit is reinstated).
+  live Codex wham numbers, live Claude usage, or an explicit
+  `POST /api/quota/mock` payload. The config `codex.fallback`/`claude.fallback`
+  blocks are no longer seeded or used to fill gaps — a provider with no data
+  shows an explicit *not connected* note instead of fake percentages.
+- **5h card only when the API returns it.** ChatGPT does not return a 5-hour
+  window for every plan. Rather than omitting the card (which read as
+  breakage), it renders as *n/a — not reported*; it fills in automatically once
+  the API reports the window again.
 - **Account name headers above each provider's quota cards.** Codex decodes the
   account `name`/`email` (e.g. "Example User") from the `id_token` in
   `~/.codex/auth.json`; Claude shows "Claude Code" (configurable via
@@ -191,5 +219,6 @@ status indicator for Codex and Claude Code.
 - Codex `config.toml` command strings correctly escape inner double quotes.
 - Claude hook unregister no longer leaves empty `"Event": []` keys behind.
 
-[Unreleased]: https://github.com/leiseek/tokenflare/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/leiseek/tokenflare/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/leiseek/tokenflare/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/leiseek/tokenflare/releases/tag/v1.0.0

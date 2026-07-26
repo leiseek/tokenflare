@@ -1,8 +1,66 @@
 # Tokenflare — Design Spec
 
 **Date:** 2026-07-24
-**Status:** Implemented (v1.0.0)
+**Status:** Implemented, with amendments — see below
 **Owner:** Tokenflare contributors
+
+> **This document is the original design record, kept as written.** Where the
+> implementation has since diverged, the amendment is noted here and the
+> superseded passage is marked inline rather than rewritten — the reasoning
+> that led to a decision is worth keeping even after the decision changes.
+>
+> **The README is authoritative for current behaviour.**
+
+## 0. Amendments since this spec was written
+
+### A1 — Claude quota is live, not config-sourced *(supersedes §6.7, §11, §12.3, and the "Non-Goals" bullet)*
+
+The spec assumed Anthropic exposed no usage endpoint, and made Claude's 5h/7d
+windows config-sourced as a result. That turned out to be wrong, and the
+consequence was worse than a missing feature: the cards showed hand-typed
+percentages from `claude.fallback` that looked like live data and were
+whatever someone had last typed into the file.
+
+Claude Code authenticates against `https://api.anthropic.com/api/oauth/usage`,
+which returns the same 5h and weekly windows its `/usage` command shows. The
+server now reads the local Claude Code OAuth token
+(`~/.claude/.credentials.json`, or the login Keychain on macOS) and fetches
+them directly — the same shape as the Codex path, and for the same reason: the
+agent keeps its own token fresh, so we only ever re-read it.
+
+That endpoint is not documented as a public API. Every field is read
+defensively and any failure degrades to "not connected".
+
+Implemented in `server/src/quota/claudeUsage.ts` + `claudeAuth.ts` and
+`server/src/jobs/claudePoll.ts` — not `claudeQuota.ts` as §6.7 names it.
+
+### A2 — No fallback quota values anywhere *(supersedes the `fallback` blocks in §6.2, and §6.6's failure path)*
+
+Both providers' `fallback` config blocks are gone, along with the code paths
+that seeded cards from them. A number on the display is always a number a
+provider returned this poll. When there is no live data the card reports
+`unavailable`; when a provider omits a window it reports `n/a`. Neither is
+ever filled in with a plausible-looking guess.
+
+`POST /api/quota/mock` survives, but only as the self-test injection point
+§6.3 describes — it is no longer how Claude values reach the display.
+
+### A3 — Sessions expire *(extends §5.3)*
+
+The multi-instance model had no lifecycle end: nothing removed a
+`TaskInstance`, so the rail grew without bound and dead sessions sat frozen at
+`RUNNING`. `server/src/jobs/sweepInstances.ts` demotes a silent session to
+`idle` after 5 minutes and evicts it after an hour.
+
+### A4 — Writes are not CORS-open *(supersedes §12.1's "LAN open, no auth" as it applies to mutating routes)*
+
+Binding `0.0.0.0` with `Access-Control-Allow-Origin: *` on every method meant
+any page the phone visited could drive the display through `/api/hooks/*`,
+`/api/override/task` or `/api/quota/mock`. Reads stay open; mutating routes no
+longer emit CORS headers, so browsers block them at preflight. The hook shim
+is unaffected — it does not preflight. Server-side auth remains out of scope.
+
+---
 
 ## 1. Overview
 
@@ -29,7 +87,7 @@ The PC is the **host** (it has the credentials and the editor hooks). The phone 
 - Native Android APK packaging (Capacitor/React Native). A PWA is enough.
 - Multi-user / multi-tenant / cloud deployment. Single-user, single-desk.
 - Storing prompts, transcripts, or credentials beyond the OAuth tokens strictly needed to fetch usage.
-- Anthropic live-usage proxy (Anthropic has no public "wham"-style usage endpoint equivalent). Claude quota is sourced from config file or, where possible, derived from local request observation.
+- ~~Anthropic live-usage proxy (Anthropic has no public "wham"-style usage endpoint equivalent). Claude quota is sourced from config file or, where possible, derived from local request observation.~~ **Superseded by [A1](#0-amendments-since-this-spec-was-written) — the premise was wrong; Claude quota is live.**
 
 ---
 
@@ -117,7 +175,7 @@ tokenflare/        (repo root)
 │  │  │  ├─ classify.ts                          ← percentage → high/medium/low/critical
 │  │  │  ├─ metrics.ts                           ← build UnifiedQuotaMetric[] for state
 │  │  │  ├─ codexWham.ts                         ← live wham fetcher + OAuth refresh
-│  │  │  ├─ claudeQuota.ts                       ← config/observed claude quota
+│  │  │  ├─ claudeUsage.ts + claudeAuth.ts        ← live claude quota (A1)
 │  │  │  └─ format.ts                            ← reset-time + value formatters
 │  │  ├─ api\
 │  │  │  ├─ rest.ts                              ← GET /api/state, /api/config, POST /api/override
@@ -151,7 +209,7 @@ tokenflare/        (repo root)
 │  ├─ unregister-codex-hook.ps1
 │  └─ unregister-claude-hook.ps1
 ├─ config\
-│  └─ tokenflare.config.json                    ← example config (quota fallback, ports, codex oauth)
+│  └─ tokenflare.config.example.json            ← template (ports, proxy, poll intervals); real config is gitignored
 ├─ e2e\                                           ← Playwright
 │  ├─ playwright.config.ts
 │  └─ tests\
@@ -296,18 +354,11 @@ For `semantics: "used"` metrics, convert first: `remaining = 100 - usedPercent`.
   "server": { "host": "0.0.0.0", "port": 7331 },
   "codex": {
     "oauth": null,                       // or { "access_token": "...", "refresh_token": "...", "account_id": "...", "expires_at": 0 }
-    "pollSeconds": 300,                  // refresh interval; 0 = no polling
-    "fallback": {                        // used when oauth null or fetch fails
-      "fiveHour":  { "remaining": 80, "resetAt": "2026-07-24T14:30:00" },
-      "weekly":    { "remaining": 91, "resetAt": "2026-07-28T09:00:00" },
-      "resets":    { "available": 2, "nextExpiresAt": "2026-07-25T00:00:00" }
-    }
+    "pollSeconds": 300,                  // refresh interval
+    "fallback": { /* REMOVED — see A2 */ }
   },
   "claude": {
-    "fallback": {
-      "fiveHour":  { "remaining": 38 },
-      "weekly":    { "remaining": 67 }
-    }
+    "fallback": { /* REMOVED — see A2 */ }
   },
   "display": { "defaultTheme": "neon-dark", "defaultFont": "jetbrains" }
 }
@@ -324,7 +375,7 @@ For `semantics: "used"` metrics, convert first: `remaining = 100 - usedPercent`.
 | `POST` | `/api/quota/mock` | Inject mock quota (for self-test; also used for Claude config values) |
 | `GET` | `/ws` (upgrade) | WebSocket |
 
-> Claude quota has no live endpoint in scope, so `POST /api/quota/mock` doubles as the way to set Claude values from the config file at startup and from manual input. There is no separate `/api/quota/claude` route.
+> ~~Claude quota has no live endpoint in scope, so `POST /api/quota/mock` doubles as the way to set Claude values from the config file at startup and from manual input.~~ **Superseded by [A1](#0-amendments-since-this-spec-was-written)** — Claude quota is polled live. `/api/quota/mock` remains a self-test injection point only. There is still no `/api/quota/claude` route.
 
 ### 6.4 Hook ingress + sanitizer
 `sanitize.ts` — given a raw hook JSON object:
@@ -355,12 +406,14 @@ Port of new-api `codex_wham_usage.go` to TS (using Node `fetch`):
 - `GET https://chatgpt.com/backend-api/wham/usage` with headers `Authorization: Bearer <access_token>`, `chatgpt-account-id: <account_id>`, `originator: codex_cli_rs`, `Accept: application/json`.
 - Parse response → primary window (5h) + secondary window (weekly) → `remaining` percent.
 - `GET /backend-api/wham/rate-limit-reset-credits` → `reset_credits_available` count + next expiry.
-- On 401/403 → refresh OAuth token (POST to OpenAI token endpoint with `refresh_token`), persist back to config, retry once. On second failure → fall back to config fallback values, mark `source: "config"`.
+- On 401/403 → re-read `~/.codex/auth.json` (the Codex CLI rotates it itself, so no refresh dance of our own) and retry once. On second failure → drop the Codex cards and mark `source: "unavailable"`. *(Amended by [A2](#0-amendments-since-this-spec-was-written): the original text fell back to config values, which no longer exist.)*
 - `codexPoll.ts` runs this on the configured interval; on success/failure folds results into `metrics` and bumps `revision`.
 
-### 6.7 Claude quota (`claudeQuota.ts`)
-- No public Anthropic usage endpoint equivalent to wham in scope. **Source = config fallback** (user edits `claude.fallback` in config, or POSTs to `/api/quota/claude`), with `source:"config"`.
-- Hook events still drive Claude **task status** normally (the reducer is provider-agnostic).
+### 6.7 Claude quota (`claudeQuota.ts`) — **SUPERSEDED by [A1](#0-amendments-since-this-spec-was-written)**
+> Kept for the record. The module is `claudeUsage.ts` + `claudeAuth.ts`, and the source is live.
+
+- ~~No public Anthropic usage endpoint equivalent to wham in scope. **Source = config fallback** (user edits `claude.fallback` in config, or POSTs to `/api/quota/claude`), with `source:"config"`.~~
+- Hook events still drive Claude **task status** normally (the reducer is provider-agnostic). *(still true)*
 
 ### 6.8 Jobs
 - `codexPoll.ts`: setInterval calling `codexWham.fetchUsage()`. Catches all errors; never crashes the server.
@@ -458,7 +511,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 - `sanitize.test.ts`: allow-list keeps session_id/cwd/event; drops prompt/transcript; rejects objects containing `api_key`/`bearer`/etc.
 - `classify.test.ts`: remaining% → class at boundaries 80/40/10; used% converted correctly; count metric thresholds.
 - `reducer.test.ts`: started→running; activity updates lastActivity; waiting; failed; **terminal protection** (failed not overwritten by stale activity); elapsed math.
-- `metrics.test.ts`: building metrics from wham payload; fallback path; `progressPercent` normalization for remaining vs used.
+- `metrics.test.ts`: building metrics from wham payload; empty input yields no cards (A2); `progressPercent` normalization for remaining vs used.
 - `format.test.ts`: reset-time formatting ("resets 14:30"), value text shapes.
 
 ### 10.2 End-to-end (`e2e/tests/end-to-end.test.ts`, Playwright)
@@ -484,7 +537,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 ## 11. Out of scope / future
 
 - Native APK via Capacitor (PWA is enough for "废弃手机显示屏").
-- Claude live-usage proxy (no public equivalent endpoint in scope; config/observed only).
+- ~~Claude live-usage proxy (no public equivalent endpoint in scope; config/observed only).~~ **Done — see [A1](#0-amendments-since-this-spec-was-written).**
 - Multi-task/multi-agent dashboard (single current task this pass).
 - Auth on the server (single desk; bind to LAN; future: shared-secret token).
 - Persistence of historical quota trends (current snapshot only).
@@ -495,7 +548,7 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 1. **Server bind + auth → LAN open, no auth.** Bind `0.0.0.0:7331`; phone opens `http://<pc-ip>:7331/` on the same LAN. Trusted home/office network assumed. (Future: optional shared-secret token if ever exposed beyond the desk.)
 2. **Codex OAuth → auto-read `~/.codex/auth.json`.** The server reads Codex OAuth tokens (and the ChatGPT account id) from the existing Codex CLI auth file at startup, and re-reads it as tokens rotate (Codex CLI rotates that file itself; we just watch it). No manual paste. The manual `codex.oauth` config block remains as an *override* for users without Codex CLI installed.
-3. **Claude quota → config/observed only.** No live Anthropic call. Claude 5h/7d come from `config/tokenflare.config.json` `claude.fallback` (and updatable via `POST /api/quota/mock`). Claude **task status** still tracks live via hooks (the reducer is provider-agnostic).
+3. ~~**Claude quota → config/observed only.** No live Anthropic call. Claude 5h/7d come from `config/tokenflare.config.json` `claude.fallback` (and updatable via `POST /api/quota/mock`).~~ **Reversed by [A1](#0-amendments-since-this-spec-was-written)** — there is a live call, and the config fallback is gone. Claude **task status** still tracks live via hooks (the reducer is provider-agnostic).
 4. **Default theme/font → neon-dark + JetBrains Mono.**
 5. **Reset count semantics → `reset_credits_available`** from wham `/rate-limit-reset-credits`, i.e. the number of unused rate-limit reset credits. Matches "Codex 剩余重置次数".
 
@@ -510,6 +563,6 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 - [ ] Server boots with empty config (no crash); serves PWA at `/`.
 - [ ] PWA renders landscape hero-left + quota-grid-right; neon-dark default; theme/font/background switchers work and persist.
 - [ ] Mock quota + mock hook POSTs update the display live over WS.
-- [ ] Codex wham fetcher works when OAuth configured; falls back to config otherwise.
+- [x] Codex wham fetcher works when OAuth configured; reports `unavailable` otherwise (A2 — no config fallback).
 - [ ] Hook registration scripts exist and are reversible; fail-open shim never blocks the agent.
 - [ ] README documents quickstart, self-test checklist, and config reference.

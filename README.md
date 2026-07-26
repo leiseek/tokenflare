@@ -14,7 +14,7 @@ at it, or repurpose an old phone into a desk status panel.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey.svg)](#platforms)
-[![Tests](https://img.shields.io/badge/tests-99%20unit%20%2B%2014%20e2e-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-99%20unit%20%2B%2016%20e2e-brightgreen.svg)](#testing)
 
 </div>
 
@@ -195,7 +195,7 @@ for the full design.
 ```bash
 npm run typecheck   # strict TypeScript, zero errors
 npm test            # 99 unit tests (hooks, sanitize, reducer, metrics, store, quota, watcher, sweeper)
-npm run test:e2e    # 14 Playwright e2e tests (hook -> server -> WS -> rendered DOM)
+npm run test:e2e    # 16 Playwright e2e tests (hook -> server -> WS -> rendered DOM)
 ```
 
 Both suites are offline: the e2e config disables every credential read and
@@ -302,7 +302,7 @@ unaffected.
 <details>
 <summary><b>The session rail keeps growing / sessions stay "RUNNING" forever</b></summary>
 
-Fixed in 0.2.0. Sessions that stop reporting are demoted to `idle` after 5
+Fixed in 2.0.0. Sessions that stop reporting are demoted to `idle` after 5
 minutes and dropped from the rail after an hour. If you still see this, you are
 running an older build — rebuild with `npm run build`.
 </details>
