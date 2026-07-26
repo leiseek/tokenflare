@@ -176,7 +176,9 @@ type EvidenceKind =
   | "completed"    // explicit task completion (manual override or future Stop+flag)
   | "failed";      // error / abort
 ```
-> Mapping rule copied from pulse-island: `Stop`/`SessionEnd` map to **`activity`**, *not* `completed` — the agent finishing a response ≠ the user's task being done.
+> Display semantics: `UserPromptSubmit` starts a displayed turn,
+> `PermissionRequest`/`Notification` means **waiting**, and
+> `Stop`/`SessionEnd` marks that displayed turn **completed**.
 
 ### 5.2 `TaskStatus` (traffic-light state, derived by reducer)
 ```ts
@@ -189,9 +191,9 @@ Color mapping (host computes, phone renders):
 - `completed` → blue `#699eff`
 - `idle` / `observed` → muted grey `#7f8490`
 
-### 5.3 `TaskState`
+### 5.3 `TaskState` / `TaskInstance` (multi-instance model)
 ```ts
-interface TaskState {
+interface TaskState {          // legacy single-task projection
   taskId: string;            // session_id from hook, or "manual"
   provider: "codex" | "claude" | "manual";
   cwdLabel: string;          // basename of cwd, sanitized
@@ -200,8 +202,30 @@ interface TaskState {
   lastActivityAt: number | null;
   label: string;             // best-effort label
 }
+
+interface TaskInstance {       // one per tool/session (the authoritative model)
+  id: string;                 // `${provider}:${sessionId}`
+  taskId: string;
+  provider: Provider;
+  cwdLabel: string;
+  status: TaskStatus;
+  startedAt: number | null;
+  lastActivityAt: number | null;
+  label: string;
+  lastNarrative?: NarrativeEntry | null;  // only the newest (#4)
+}
 ```
-> **`label` source:** Codex/Claude hooks do not expose the user's prompt or task description (we deliberately drop them for privacy, per §5.1). So `label` defaults to the `cwdLabel` (the project folder name). A richer label can be set via `POST /api/override/task` (manual) — e.g. the user tags the current task from the settings panel. The hero shows `label` then `cwdLabel` as a subline so the project context is never lost.
+> **Multi-instance:** the store holds a `Map<id, TaskInstance>` so concurrent
+> Codex + Claude (or several sessions) are tracked independently and never
+> clobber one another. The legacy single `task` field is a projection of the
+> most recently active instance, kept for backward compatibility. The PWA left
+> rail renders one card per instance (each with its own project name + status);
+> selecting a card pins the progress panel to that instance's latest narrative.
+>
+> **`label` source:** Codex/Claude hooks do not expose the user's prompt or task description (we deliberately drop them for privacy, per §5.1). So `label` defaults to the `cwdLabel` (the project folder name). The hero shows `label` then `cwdLabel` as a subline so the project context is never lost.
+>
+> **Narrative retention (#4):** each instance keeps ONLY its newest visible
+> assistant update; the progress panel renders a single entry, not a history.
 
 ### 5.4 `QuotaMetric` (the `UnifiedQuotaMetric` port)
 ```ts
@@ -310,7 +334,10 @@ For `semantics: "used"` metrics, convert first: `remaining = 100 - usedPercent`.
 
 `mapEvent.ts` — provider event name → `EvidenceKind`:
 - Codex/Claude `SessionStart` → `started`
-- `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd` → `activity`
+- `UserPromptSubmit` → `started` (also revives the next turn in the same session)
+- `PreToolUse`, `PostToolUse`, compaction/subagent events → `activity`
+- `PermissionRequest` and Claude `Notification` → `waiting`
+- `Stop`, `SessionEnd` → `completed`
 - `Notification` (Claude) / `PermissionRequest` → `waiting`
 - `error`/`abort` signals → `failed`
 
@@ -388,17 +415,30 @@ Port of new-api `codex_wham_usage.go` to TS (using Node `fetch`):
 
 ---
 
-## 8. Hook registration (`scripts/`)
+## 8. Hook registration (`scripts/`) + Codex transcript watcher
 
 Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted to call our server instead of a named pipe:
 
-- **Codex** (`register-codex-hook.ps1`): edits `%USERPROFILE%\.codex\config.toml`, subscribes `SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop` to a shim command that reads stdin JSON and POSTs to `http://127.0.0.1:7331/api/hooks/codex`. `timeout = 1` (fail-open; the hook must never block the agent).
-- **Claude** (`register-claude-hook.ps1`): edits `%USERPROFILE%\.claude\settings.json`, subscribes the same events + `Notification` (waiting) to POST to `/api/hooks/claude`.
+- **Codex** (`register-codex-hook.ps1`): safely merges current-schema matcher groups into `%USERPROFILE%\.codex\hooks.json` for the **5 events Codex CLI actually supports**: `SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop`. (`PermissionRequest` and `SessionEnd` are Claude Code events — they never fire on Codex, so they are not registered.)
+- **Claude** (`register-claude-hook.ps1`): safely merges command hooks into `%USERPROFILE%\.claude\settings.json`, including `PermissionRequest`, `Notification`, `PostToolUseFailure`, `Stop`, and `SessionEnd`.
+- The shim strips all fields except `session_id`, `hook_event_name`, `cwd`, and `transcript_path` before POSTing; prompts and tool payloads never leave the client process.
+- **Incremental narrative (#2):** the shim keeps a per-`transcript_path` byte offset across invocations and reads only the newly-appended tail, extracting all newly-written visible assistant text. It fires on **every** event (not just tool events) so non-tool assistant replies surface too. First sight of a file seeds from the tail to avoid replaying history.
+- Registration is idempotent and preserves unrelated user hooks. Uninstall removes only handlers that reference Tokenflare's forwarder.
 - The shim: a tiny `node scripts/hook-forward.mjs $Provider` that reads stdin, posts JSON, exits 0 regardless of server response (fail-open). If the server is down, the shim exits 0 immediately.
 - **Runtime dependency:** the shim needs `node` on PATH (already required for the server). A pure-PowerShell `hook-forward.ps1` fallback is also provided for users who can't guarantee Node is on PATH at hook time; both do the same thing.
 - Uninstall scripts reverse the edits.
 
 **Fail-open contract:** the shim never throws, never blocks >1s, never affects agent behavior if the display server is offline.
+
+### 8.1 Codex transcript watcher (`server/src/jobs/codexWatcher.ts`) — for Codex Desktop
+
+**Codex Desktop (and the VSCode extension) do NOT dispatch `hooks.json` command hooks** — that is a Codex CLI feature. Sessions launched from Desktop would therefore be invisible to Tokenflare. To cover all surfaces, a background watcher tails the rollout-`*.jsonl` files Codex always writes under `~/.codex/sessions/YYYY/MM/DD/` and reconstructs live state from them:
+
+- Polls every ~3s (configurable via `codex.watchIntervalMs`); reads only files whose `mtime` changed, and only the new tail bytes (in-memory offset per file).
+- Derives status from `event_msg` records: `task_started` → `running`, `task_complete` → `completed`, `function_call`/`custom_tool_call` → `running` (activity).
+- Extracts visible assistant text from `response_item` assistant messages (`commentary`/`final_answer` output_text) — the same parser shared with the hook shim (`transcriptParse.ts`).
+- Writes through the same `store.upsertInstance` path as hooks, keyed `codex:<sessionId>`, so hook-sourced and watcher-sourced state never conflict.
+- Configurable: `codex.watch` (default `true`) and `TOKENFLARE_CODEX_HOME` (override the `.codex` dir, e.g. for tests). Errors are caught and logged — never fatal.
 
 ---
 
