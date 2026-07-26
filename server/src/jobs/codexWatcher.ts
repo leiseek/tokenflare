@@ -1,7 +1,7 @@
 /**
  * Background job: watch Codex session transcripts and reconstruct live state.
  *
- * Codex Desktop (and the VSCode extension) do NOT dispatch hooks.json command
+ * The ChatGPT desktop app (and the VSCode extension) do NOT dispatch hooks.json
  * hooks — that's a Codex CLI feature. So to track Codex sessions regardless of
  * which surface launched them, we tail the rollout-*.jsonl files Codex always
  * writes under ~/.codex/sessions/YYYY/MM/DD/ and derive status + visible
@@ -177,12 +177,21 @@ export function watchOnce(ctx: WatchCtx): void {
     } catch {
       continue;
     }
-    cur.offset = size;
-
-    // If this read started mid-file (resume), the first line may be partial.
-    const skipFirst = cur.offset - buf.length > 0 && buf.length < size;
+    // Parse everything we read, but advance the cursor only past the last
+    // COMPLETE line.
+    //
+    // This used to skip the window's first line as "possibly partial", which
+    // threw away the whole update whenever a tick picked up exactly one new
+    // record — the common case for a session mid-turn. Holding the cursor at
+    // the last newline instead means a record caught mid-append is simply
+    // re-read next tick; a partial line fails JSON.parse and is skipped, and
+    // the store de-duplicates identical narrative text, so re-reading a
+    // complete-but-not-yet-newline-terminated record costs nothing.
+    const priorOffset = cur.offset;
+    const lastNewline = buf.lastIndexOf(0x0a);
+    cur.offset = lastNewline >= 0 ? priorOffset + lastNewline + 1 : priorOffset;
     const text = buf.toString("utf8");
-    const result = parseTranscriptWindow(text, "codex", skipFirst);
+    const result = parseTranscriptWindow(text, "codex", false);
 
     // Learn the session id / cwd from session_meta if present; otherwise fall
     // back to the filename UUID (large files may have no meta in the new tail).

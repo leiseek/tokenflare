@@ -110,6 +110,54 @@ export function codexLifecycle(record: unknown): CodexLifecycle {
   return null;
 }
 
+/**
+ * Classify a Claude record's lifecycle signal (for the Claude file watcher).
+ *
+ * Claude transcripts carry no explicit task_started/task_complete events the
+ * way Codex rollouts do, so the turn boundary is inferred from what the records
+ * actually say (verified against real transcripts):
+ *
+ *   assistant + stop_reason "tool_use"   -> the agent is calling a tool, working
+ *   assistant + stop_reason "end_turn"   -> the turn produced its final answer
+ *   system    + subtype "turn_duration"  -> Claude Code closed out the turn
+ *   user                                 -> a prompt or a tool result came back
+ *
+ * Deliberately mapped onto the same vocabulary the Codex watcher uses, so both
+ * feed one `statusFromLifecycle`.
+ */
+export function claudeLifecycle(record: unknown): CodexLifecycle {
+  if (!record || typeof record !== "object") return null;
+  const r = record as Record<string, unknown>;
+
+  if (r.type === "assistant") {
+    const stop = (r.message as { stop_reason?: unknown } | undefined)?.stop_reason;
+    if (stop === "end_turn" || stop === "stop_sequence") return "task_complete";
+    // "tool_use", null (still streaming), or anything unrecognized: still working.
+    return "activity";
+  }
+  if (r.type === "system") {
+    // turn_duration is written once the turn is finished and timed.
+    if (r.subtype === "turn_duration") return "task_complete";
+    return null;
+  }
+  if (r.type === "user") return "activity";
+  return null;
+}
+
+/**
+ * Extract the session id + cwd from any Claude record that carries them.
+ * Unlike Codex there is no single session_meta line — `sessionId` and `cwd`
+ * ride along on the user/assistant/system records themselves.
+ */
+export function claudeSessionMeta(
+  record: unknown,
+): { sessionId: string; cwd: string | undefined } | null {
+  if (!record || typeof record !== "object") return null;
+  const r = record as Record<string, unknown>;
+  if (typeof r.sessionId !== "string" || !r.sessionId) return null;
+  return { sessionId: r.sessionId, cwd: typeof r.cwd === "string" ? r.cwd : undefined };
+}
+
 /** Extract the session_id + cwd from a Codex session_meta record. */
 export function codexSessionMeta(
   record: unknown,
@@ -174,6 +222,12 @@ export function parseTranscriptWindow(
     } else {
       const vis = extractClaudeRecord(record);
       if (vis) narratives.push(vis);
+      const lc = claudeLifecycle(record);
+      if (lc) lifecycle = lc;
+      // Every record carries the ids, so keep the latest rather than the first:
+      // a resumed session rewrites cwd, and the newest value is the true one.
+      const meta = claudeSessionMeta(record);
+      if (meta) session = meta;
     }
   }
   return { narratives, lifecycle, session };

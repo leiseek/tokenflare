@@ -31,6 +31,8 @@
     "autoReadCredentials": true,
     "credentialsPath": null,
     "pollSeconds": 300,
+    "watch": true,
+    "watchIntervalMs": 3000,
     "oauth": null,
     "accountName": "Claude Code"
   },

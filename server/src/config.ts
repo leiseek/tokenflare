@@ -23,7 +23,7 @@ export interface CodexConfig {
   authJsonPath: string | null;
   pollSeconds: number;
   /**
-   * Tail ~/.codex/sessions transcripts to track Codex Desktop/CLI sessions.
+   * Tail ~/.codex/sessions transcripts to track desktop-app and CLI sessions.
    * Desktop does not dispatch hooks, so this is how Codex sessions surface.
    * Default true.
    */
@@ -49,6 +49,15 @@ export interface ClaudeConfig {
   credentialsPath: string | null;
   /** Usage poll interval in seconds (default 300). */
   pollSeconds: number;
+  /**
+   * Tail ~/.claude/projects transcripts to track Claude Code sessions even when
+   * hooks are not registered (or the surface running Claude Code does not
+   * dispatch them). Default true — this is the fallback that keeps Claude as
+   * resilient as Codex.
+   */
+  watch: boolean;
+  /** Watcher poll interval in ms (default 3000). */
+  watchIntervalMs?: number;
   /** Explicit token override; normally null (the credentials file is used). */
   oauth: { accessToken?: string } | null;
   /** Display name for the Claude account shown above its quota cards.
@@ -87,6 +96,8 @@ const DEFAULTS: AppConfig = {
     autoReadCredentials: true,
     credentialsPath: null,
     pollSeconds: 300,
+    watch: true,
+    watchIntervalMs: 3000,
     oauth: null,
     accountName: "Claude Code",
   },
@@ -150,6 +161,8 @@ export function loadConfig(): AppConfig {
   if (process.env.TOKENFLARE_CODEX_POLL) cfg.codex.pollSeconds = Number(process.env.TOKENFLARE_CODEX_POLL) || cfg.codex.pollSeconds;
   if (process.env.TOKENFLARE_CLAUDE_POLL) cfg.claude.pollSeconds = Number(process.env.TOKENFLARE_CLAUDE_POLL) || cfg.claude.pollSeconds;
   if (process.env.TOKENFLARE_CLAUDE_CREDENTIALS) cfg.claude.credentialsPath = String(process.env.TOKENFLARE_CLAUDE_CREDENTIALS);
+  if (process.env.TOKENFLARE_CLAUDE_WATCH === "false" || process.env.TOKENFLARE_CLAUDE_WATCH === "0") cfg.claude.watch = false;
+  if (process.env.TOKENFLARE_CLAUDE_WATCH === "true" || process.env.TOKENFLARE_CLAUDE_WATCH === "1") cfg.claude.watch = true;
   if (process.env.TOKENFLARE_CODEX_WATCH === "false" || process.env.TOKENFLARE_CODEX_WATCH === "0") cfg.codex.watch = false;
   if (process.env.TOKENFLARE_CODEX_WATCH === "true" || process.env.TOKENFLARE_CODEX_WATCH === "1") cfg.codex.watch = true;
   if (process.env.TOKENFLARE_PROXY) cfg.proxy = { url: String(process.env.TOKENFLARE_PROXY) };
@@ -175,6 +188,7 @@ export function sanitizeConfigForClient(cfg: AppConfig): unknown {
     claude: {
       autoReadCredentials: cfg.claude.autoReadCredentials,
       pollSeconds: cfg.claude.pollSeconds,
+      watch: cfg.claude.watch,
       hasOauth: !!cfg.claude.oauth?.accessToken,
       accountName: cfg.claude.accountName,
     },

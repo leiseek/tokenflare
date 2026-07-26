@@ -14,7 +14,7 @@ at it, or repurpose an old phone into a desk status panel.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey.svg)](#platforms)
-[![Tests](https://img.shields.io/badge/tests-99%20unit%20%2B%2016%20e2e-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-112%20unit%20%2B%2016%20e2e-brightgreen.svg)](#testing)
 
 </div>
 
@@ -146,7 +146,7 @@ Remove anytime: `unregister-codex-hook.{ps1,sh}` / `unregister-claude-hook.{ps1,
 +------------------+---------------------------+----------------------+
 ```
 
-The left rail lists every active tool/session (each with its own project name + status + elapsed). Tap a card to pin the progress panel to that instance — only its **latest** visible assistant update is shown. Codex Desktop sessions are tracked automatically by tailing their transcripts (no hooks needed). Tap the ⚙ gear to switch theme, font, background, reduced-motion, or server URL.
+The left rail lists every active tool/session (each with its own project name + status + elapsed). Tap a card to pin the progress panel to that instance — only its **latest** visible assistant update is shown. Sessions are also tracked by tailing transcripts, so a session still appears even with no hooks registered — including from the ChatGPT desktop app (formerly the Codex app), which does not dispatch hooks at all. Tap the ⚙ gear to switch theme, font, background, reduced-motion, or server URL.
 
 ---
 
@@ -171,6 +171,8 @@ optional — the server boots on defaults with no config file at all.
   "claude": {
     "autoReadCredentials": true,     // read ~/.claude/.credentials.json (Keychain on macOS)
     "pollSeconds": 300,
+    "watch": true,                   // tail ~/.claude/projects (fallback when hooks don't fire)
+    "watchIntervalMs": 3000,
     "accountName": "Claude Code"     // shown above the Claude cards
   },
   "display": { "defaultTheme": "neon-dark", "defaultFont": "jetbrains" }
@@ -183,7 +185,7 @@ by design, so a number on the wall is always a real number.
 
 Env overrides: `TOKENFLARE_HOST`, `TOKENFLARE_PORT`, `TOKENFLARE_CODEX_POLL`,
 `TOKENFLARE_CODEX_WATCH`, `TOKENFLARE_CLAUDE_POLL`,
-`TOKENFLARE_CLAUDE_CREDENTIALS`, `TOKENFLARE_PROXY`, `HTTPS_PROXY`,
+`TOKENFLARE_CLAUDE_CREDENTIALS`, `TOKENFLARE_CLAUDE_WATCH`, `TOKENFLARE_PROXY`, `HTTPS_PROXY`,
 `HTTP_PROXY`, `TOKENFLARE_CONFIG`, `TOKENFLARE_PWA_DIR`.
 See [`docs/specs/2026-07-24-tokenflare-design.md`](docs/specs/2026-07-24-tokenflare-design.md)
 for the full design.
@@ -194,7 +196,7 @@ for the full design.
 
 ```bash
 npm run typecheck   # strict TypeScript, zero errors
-npm test            # 99 unit tests (hooks, sanitize, reducer, metrics, store, quota, watcher, sweeper)
+npm test            # 112 unit tests (hooks, sanitize, reducer, metrics, store, quota, watcher, sweeper)
 npm run test:e2e    # 16 Playwright e2e tests (hook -> server -> WS -> rendered DOM)
 ```
 
@@ -209,7 +211,7 @@ network fetch, so CI never depends on OpenAI or Anthropic being reachable.
 4. `curl -X POST .../api/hooks/codex -d '{"hook_event_name":"PermissionRequest","session_id":"t1","cwd":"D:/proj"}'` → hero turns **amber / WAITING**.
 5. POST a second provider (`/api/hooks/claude ...`) → a second session card appears alongside the first; tap either to switch the progress panel.
 6. `curl -X POST .../api/quota/mock -d '{"codex":{"fiveHour":{"remaining":8}},"claude":{}}'` → Codex 5h card goes **red / critical**.
-7. Start a real Codex Desktop session → it shows up automatically (the transcript watcher tails `~/.codex/sessions`); no hook registration needed for Desktop.
+7. Start a session in the ChatGPT desktop app (Codex mode) → it shows up automatically; the watcher tails `~/.codex/sessions` and no hook registration is needed. The same holds for Claude Code via `~/.claude/projects`.
 8. Tap ⚙ → switch theme to *Tokyo Night*, toggle *Reduced motion*, pick a font → changes persist across reloads.
 
 ---

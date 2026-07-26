@@ -60,6 +60,29 @@ any page the phone visited could drive the display through `/api/hooks/*`,
 longer emit CORS headers, so browsers block them at preflight. The hook shim
 is unaffected — it does not preflight. Server-side auth remains out of scope.
 
+### A5 — Claude has a transcript watcher too *(extends §8.1)*
+
+The spec gave the transcript watcher to Codex only, on the reasoning that Codex
+Desktop dispatches no hooks while Claude Code always would. That left the two
+providers unevenly resilient: Codex survived missing hooks, Claude did not —
+an unregistered hook, one pointed at the wrong server URL, or a surface that
+does not dispatch made a Claude session simply invisible, with no fallback.
+
+`server/src/jobs/claudeWatcher.ts` tails `~/.claude/projects/**/<uuid>.jsonl`.
+Claude transcripts carry no explicit lifecycle events, so the turn boundary is
+inferred from what the records do carry: `stop_reason` on assistant messages
+(`tool_use` = working, `end_turn` = done) and `system`/`turn_duration`. Both
+watchers share `transcriptParse.ts`, so what counts as user-visible text cannot
+drift between providers. Sub-agent transcripts under `subagents/` are skipped —
+they belong to a session the rail already shows.
+
+*Terminology note:* what §8.1 calls "Codex Desktop" is now the unified **ChatGPT
+desktop app** (OpenAI merged the standalone Codex app into it on 2026-07-09;
+Codex is a mode inside it). Nothing about the integration changed — the MSIX
+package identity is still `OpenAI.Codex` and it still writes
+`~/.codex/sessions/**/rollout-*.jsonl`, verified against a live session.
+
+
 ---
 
 ## 1. Overview
@@ -483,9 +506,9 @@ Port of pulse-island's `register-hook.ps1` / `register-claude-hook.ps1`, adapted
 
 **Fail-open contract:** the shim never throws, never blocks >1s, never affects agent behavior if the display server is offline.
 
-### 8.1 Codex transcript watcher (`server/src/jobs/codexWatcher.ts`) — for Codex Desktop
+### 8.1 Transcript watchers (`codexWatcher.ts`, `claudeWatcher.ts`) — for surfaces that do not dispatch hooks
 
-**Codex Desktop (and the VSCode extension) do NOT dispatch `hooks.json` command hooks** — that is a Codex CLI feature. Sessions launched from Desktop would therefore be invisible to Tokenflare. To cover all surfaces, a background watcher tails the rollout-`*.jsonl` files Codex always writes under `~/.codex/sessions/YYYY/MM/DD/` and reconstructs live state from them:
+**The desktop app (and the VSCode extension) do NOT dispatch `hooks.json` command hooks** — that is a Codex CLI feature. Sessions launched from Desktop would therefore be invisible to Tokenflare. To cover all surfaces, a background watcher tails the rollout-`*.jsonl` files Codex always writes under `~/.codex/sessions/YYYY/MM/DD/` and reconstructs live state from them:
 
 - Polls every ~3s (configurable via `codex.watchIntervalMs`); reads only files whose `mtime` changed, and only the new tail bytes (in-memory offset per file).
 - Derives status from `event_msg` records: `task_started` → `running`, `task_complete` → `completed`, `function_call`/`custom_tool_call` → `running` (activity).

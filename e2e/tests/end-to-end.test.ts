@@ -52,6 +52,8 @@ async function bootServer(mode: "source" | "compiled" = "source"): Promise<strin
         autoReadCredentials: false,
         credentialsPath: null,
         pollSeconds: 0,
+        watch: true, // exercised, but pointed at the temp home below
+        watchIntervalMs: 1000,
         oauth: null,
         accountName: "Claude Code",
       },
@@ -71,9 +73,12 @@ async function bootServer(mode: "source" | "compiled" = "source"): Promise<strin
       TOKENFLARE_HOST: "127.0.0.1",
       TOKENFLARE_PORT: String(port),
       TOKENFLARE_CONFIG: configPath,
-      // Point the codex transcript watcher at an empty dir so the real
-      // ~/.codex/sessions never leaks live sessions into the test assertions.
+      // Point BOTH transcript watchers at an empty dir. Without this they read
+      // the developer's real ~/.codex/sessions and ~/.claude/projects, and the
+      // machine's own live agent sessions show up in the rail mid-assertion —
+      // which is exactly how this was caught.
       TOKENFLARE_CODEX_HOME: tmp,
+      TOKENFLARE_CLAUDE_HOME: tmp,
     },
     stdio: ["ignore", "pipe", "pipe"],
     // Required on Windows to launch npx.cmd (.exe files like node don't need it).

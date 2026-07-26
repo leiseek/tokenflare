@@ -13,6 +13,7 @@ import { createServer } from "./server.js";
 import { startCodexPoll } from "./jobs/codexPoll.js";
 import { startClaudePoll } from "./jobs/claudePoll.js";
 import { startCodexWatcher } from "./jobs/codexWatcher.js";
+import { startClaudeWatcher } from "./jobs/claudeWatcher.js";
 import { startInstanceSweeper } from "./jobs/sweepInstances.js";
 
 function main(): void {
@@ -46,7 +47,7 @@ function main(): void {
   // running instead of accumulating every session since boot.
   const stopSweeper = startInstanceSweeper({ store });
 
-  // Codex Desktop/CLI session transcript watcher. Reconstructs live state by
+  // Codex desktop-app/CLI session transcript watcher. Reconstructs live state by
   // tailing ~/.codex/sessions (hooks.json is a CLI-only feature, so Desktop
   // sessions would otherwise be invisible). Fail-open; never crashes the server.
   const stopWatch = config.codex.watch
@@ -55,6 +56,18 @@ function main(): void {
         codexHome: process.env.TOKENFLARE_CODEX_HOME,
         intervalMs: config.codex.watchIntervalMs,
         log: (m) => console.log(`[codex] ${m}`),
+      })
+    : () => undefined;
+
+  // Claude Code transcript watcher. Hooks remain the primary signal, but this
+  // keeps a session visible when they are not registered or do not fire — the
+  // same safety net Codex already had. Fail-open; never crashes the server.
+  const stopClaudeWatch = config.claude.watch
+    ? startClaudeWatcher({
+        store,
+        claudeHome: process.env.TOKENFLARE_CLAUDE_HOME,
+        intervalMs: config.claude.watchIntervalMs,
+        log: (m) => console.log(`[claude] ${m}`),
       })
     : () => undefined;
 
@@ -90,7 +103,8 @@ function main(): void {
     }
     line("ws:      /ws");
     line("codex:   " + (config.codex.autoReadAuthJson ? "auto-read ~/.codex/auth.json" : "config oauth"));
-    line("watch:   " + (config.codex.watch ? "tailing ~/.codex/sessions" : "disabled"));
+    line("watch:   " + (config.codex.watch ? "tailing ~/.codex/sessions" : "codex watch off"));
+    line("         " + (config.claude.watch ? "tailing ~/.claude/projects" : "claude watch off"));
     console.log("└" + "─".repeat(INNER + 2) + "┘");
   });
 
@@ -101,6 +115,7 @@ function main(): void {
     stopClaudePoll();
     stopSweeper();
     stopWatch();
+    stopClaudeWatch();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 2000).unref();
   };

@@ -5,6 +5,47 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-07-26
+
+### Added
+- **Claude Code transcript watcher** (`server/src/jobs/claudeWatcher.ts`). Claude
+  was tracked through `~/.claude/settings.json` hooks and nothing else, which
+  left it strictly less resilient than Codex: an unregistered hook, one pointed
+  at the wrong server URL, or a surface that does not dispatch made a session
+  invisible with no fallback at all. The watcher tails
+  `~/.claude/projects/**/<uuid>.jsonl`, which Claude Code writes regardless of
+  surface. Disable with `claude.watch: false` or `TOKENFLARE_CLAUDE_WATCH=0`.
+
+  Claude transcripts carry no explicit lifecycle events, so the turn boundary is
+  inferred from what the records do carry: `stop_reason` on assistant messages
+  (`tool_use` = working, `end_turn`/`stop_sequence` = done) and
+  `system`/`turn_duration`. Sub-agent transcripts under `subagents/` are skipped
+  — they belong to a session the rail already shows.
+
+  This finally gives `extractClaudeRecord` and the `"claude"` branch of
+  `parseTranscriptWindow` a production caller; both existed but were reachable
+  only from tests.
+
+### Fixed
+- **Both watchers could swallow an update entirely.** The incremental read
+  skipped the first line of each window as "possibly partial", which discards
+  the whole update whenever a tick picks up exactly one new record — the normal
+  case for a session mid-turn, i.e. precisely when the display needs to move.
+  The cursor now advances only past the last complete line, so a record caught
+  mid-append is re-read on the next tick instead of lost. This affects the Codex
+  watcher shipped in 2.0.0, not just the new one.
+- **The e2e suite read the developer's real agent sessions.** Only
+  `TOKENFLARE_CODEX_HOME` was redirected to a temp dir; once a Claude watcher
+  existed, live sessions on the machine appeared in the rail mid-assertion. Both
+  watcher homes are isolated now.
+
+### Changed
+- Terminology: what the docs called "Codex Desktop" is the unified **ChatGPT
+  desktop app** — OpenAI merged the standalone Codex app into it on 2026-07-09,
+  and Codex is a mode inside it. Nothing about the integration changed: the MSIX
+  package identity is still `OpenAI.Codex` and it still writes
+  `~/.codex/sessions/**/rollout-*.jsonl`, verified against a live session.
+
 ## [2.0.0] - 2026-07-26
 
 Major because two things change under an existing install: quota cards that
