@@ -16,7 +16,7 @@
     "test": "node --import tsx --test --test-reporter=spec"
   },
   "dependencies": {
-    "https-proxy-agent": "^7.0.6",
+    "https-proxy-agent": "^9.1.0",
     "socks-proxy-agent": "^8.0.5",
     "ws": "^8.18.0"
   },
